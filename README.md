@@ -23,32 +23,33 @@ A professional-grade, real-time web dashboard for scalping NIFTY 50 options. Thi
 
 This dashboard uses institutional-grade logic rather than simple indicators.
 
-### 1. Synthetic Future & Market Bias
-Instead of just tracking the Index vs Future difference, we calculate the **True Market Sentiment** using Options data:
+### 1. Synthetic Future & Market Bias (Relative Z-Score)
+To solve the "Cost of Carry" permanent bull bias in Indian markets:
+- **Old Standard**: `Synthetic - Spot` (Always positive).
+- **New Pro Logic**: `Relative Sentiment = Current Basis - 5min Average Basis`.
+- **Signal**:
+  - `> +5`: 🟢 **BULLISH** (Premium Expanding)
+  - `< -5`: 🔴 **BEARISH** (Premium Collapsing)
 
-> **Formula:**
-> - **Synthetic Future** = `ATM Strike + CE Premium - PE Premium`
-> - **Market Bias (Basis)** = `Synthetic Future - Spot Price`
-
-**Interpretation:**
-- **Bias > +5**: 🟢 **BULLISH** (Call writers are covering, premium shift to calls)
-- **Bias < -5**: 🔴 **BEARISH** (Put writers are covering, premium shift to puts)
-- **Bias ±5**: ⚪ **NEUTRAL** (Rangebound / Decay)
-
-### 2. Straddle Trend Detection
+### 2. Straddle Trend & Logic
 We track the **Straddle Price** (`ATM CE + ATM PE`) to avoid trading into decay.
 - **RISING Straddle**: Momentum is increasing (Safe to enter).
 - **FALLING Straddle**: Theta decay is dominant (Stay away).
 
-### 3. Signal Generation
-The dashboard combines **Sentiment** + **Trend** to generate signals:
+### 3. ATM Hysteresis (Anti-Flicker)
+Prevents rapid token switching when Spot hovers between strikes (e.g., 25025).
+- **Logic**: Only switch ATM if Spot moves **> 40 points** from the current strike.
 
-| Sentiment | Straddle Trend | Signal | Trade Suggestion |
-|-----------|----------------|--------|------------------|
-| 🟢 BULLISH | 📈 RISING | **BUY CALL** | `BUY {ATM} CE` |
-| 🔴 BEARISH | 📈 RISING | **BUY PUT** | `BUY {ATM} PE` |
-| Any | 📉 FALLING | **WAIT** | `WAIT - DECAY` |
-| ⚪ NEUTRAL | Any | **WAIT** | `WAIT - NO TREND` |
+### 4. Smart Signals + TRAP Filter
+Combines Sentiment + Trend + **OI Data** to generate signals:
+
+| Sentiment | Trend | OI (PCR) | Signal | Suggestion |
+|-----------|-------|----------|--------|------------|
+| 🟢 BULLISH | 📈 RISING | Normal | **BUY CALL** | `BUY {ATM} CE` |
+| 🔴 BEARISH | 📈 RISING | Normal | **BUY PUT** | `BUY {ATM} PE` |
+| 🟢 BULLISH | 📈 RISING | < 0.6 | **⚠️ TRAP** | `AVOID - CALL WRITING` |
+| 🔴 BEARISH | 📈 RISING | > 1.4 | **⚠️ TRAP** | `AVOID - PUT WRITING` |
+| Any | 📉 FALLING | Any | **WAIT** | `WAIT - DECAY` |
 
 ---
 
