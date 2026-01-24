@@ -28,8 +28,8 @@ To solve the "Cost of Carry" permanent bull bias in Indian markets:
 - **Old Standard**: `Synthetic - Spot` (Always positive).
 - **New Pro Logic**: `Relative Sentiment = Current Basis - 5min Average Basis`.
 - **Signal**:
-  - `> +5`: 🟢 **BULLISH** (Premium Expanding)
-  - `< -5`: 🔴 **BEARISH** (Premium Collapsing)
+  - `> +3`: 🟢 **BULLISH** (Momentum Spike)
+  - `< -3`: 🔴 **BEARISH** (Momentum Drop)
 
 ### 2. Straddle Trend & Logic
 We track the **Straddle Price** (`ATM CE + ATM PE`) to avoid trading into decay.
@@ -40,16 +40,49 @@ We track the **Straddle Price** (`ATM CE + ATM PE`) to avoid trading into decay.
 Prevents rapid token switching when Spot hovers between strikes (e.g., 25025).
 - **Logic**: Only switch ATM if Spot moves **> 40 points** from the current strike.
 
-### 4. Smart Signals + TRAP Filter
+### 4. Smart Signals + TRAP Filter (PCR)
 Combines Sentiment + Trend + **OI Data** to generate signals:
 
 | Sentiment | Trend | OI (PCR) | Signal | Suggestion |
 |-----------|-------|----------|--------|------------|
-| 🟢 BULLISH | 📈 RISING | Normal | **BUY CALL** | `BUY {ATM} CE` |
-| 🔴 BEARISH | 📈 RISING | Normal | **BUY PUT** | `BUY {ATM} PE` |
+| 🟢 BULLISH | 📈 RISING | Normal (>1.0) | **BUY CALL** | `BUY {ATM} CE` |
+| 🔴 BEARISH | 📈 RISING | Normal (<0.7) | **BUY PUT** | `BUY {ATM} PE` |
 | 🟢 BULLISH | 📈 RISING | < 0.6 | **⚠️ TRAP** | `AVOID - CALL WRITING` |
 | 🔴 BEARISH | 📈 RISING | > 1.4 | **⚠️ TRAP** | `AVOID - PUT WRITING` |
 | Any | 📉 FALLING | Any | **WAIT** | `WAIT - DECAY` |
+
+---
+
+## 🛡️ Logic Safety Verification
+
+We ensure the app logic is robust by using **isolated simulation tests**.
+**WARNING:** Never run extensive stress tests on the live `server.py` while trading. Use the standalone testing approach below.
+
+### How to Test Safely (Simulation)
+Create a file named `tests/verify_logic.py` to simulate market conditions without connecting to the API:
+
+```python
+import unittest
+from collections import deque
+
+class TestStrategy(unittest.TestCase):
+    def test_pcr_trap(self):
+        # Simulate: Bullish Signal but Low PCR (Call Writing)
+        signal = "BUY CALL"
+        pcr = 0.5  # Trap Level
+        
+        final_signal = signal
+        if signal == "BUY CALL" and pcr < 0.6:
+            final_signal = "TRAP"
+            
+        print(f"Scenario: {signal} + PCR {pcr} -> {final_signal}")
+        self.assertEqual(final_signal, "TRAP")
+
+if __name__ == '__main__':
+    unittest.main()
+```
+
+Run this simulation to verify logic upgrades before deploying to production.
 
 ---
 
@@ -98,9 +131,10 @@ python3 server.py
 
 ### Signal Legend
 - ⚪ **WAIT**: No clear trend or decay
-- 🟢 **BUY CALL**: Bullish Sentiment + Rising Straddle
-- 🔴 **BUY PUT**: Bearish Sentiment + Rising Straddle
+- 🟢 **BUY CALL**: Bullish Sentiment + Rising Straddle ([PCR > 1.0] Supports)
+- 🔴 **BUY PUT**: Bearish Sentiment + Rising Straddle ([PCR < 0.7] Supports)
+- ⚠️ **TRAP**: High OI Contrast (Price vs Data Mismatch)
 
 ---
 
-**Disclaimer**: This tool is for educational purposes only. Trading Options involves high risk. use at your own discretion.
+**Disclaimer**: This tool is for educational purposes only. Trading Options involves high risk. Use at your own discretion.

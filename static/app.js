@@ -378,6 +378,11 @@ async function updateScalper() {
                 scalpSignalIcon.textContent = '🔴';
                 scalpSignalText.textContent = 'BUY PUT';
                 scalpSignalDesc.textContent = `${sentiment} + ${trend} Straddle → PUT Entry`;
+            } else if (data.signal === 'TRAP') {
+                scalpingSignalBox.classList.add('trap');
+                scalpSignalIcon.textContent = '⚠️';
+                scalpSignalText.textContent = 'TRAP';
+                scalpSignalDesc.textContent = `OI Trap Detected: ${sentiment} but High PCR Reversal Risk!`;
             } else {
                 scalpingSignalBox.classList.add('wait');
                 scalpSignalIcon.textContent = '⚪';
@@ -410,6 +415,22 @@ async function updateScalper() {
             if (data.suggestion.includes('BUY')) {
                 if (data.suggestion.includes('CE')) tradeSuggestion.style.color = 'var(--accent-green)';
                 if (data.suggestion.includes('PE')) tradeSuggestion.style.color = 'var(--accent-red)';
+            }
+        }
+
+        // Update PCR Badge (New)
+        const pcrBadge = document.getElementById('pcr-badge');
+        const pcrValueEl = document.getElementById('pcr-value');
+
+        if (data.pcr !== undefined && pcrBadge && pcrValueEl) {
+            pcrBadge.style.display = 'block';
+            pcrValueEl.textContent = data.pcr.toFixed(2);
+
+            pcrBadge.classList.remove('bullish', 'bearish');
+            if (data.pcr > 1.0) {
+                pcrBadge.classList.add('bullish');
+            } else if (data.pcr < 0.7) {
+                pcrBadge.classList.add('bearish');
             }
         }
 

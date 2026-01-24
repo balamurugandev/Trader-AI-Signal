@@ -208,6 +208,11 @@
                     <span class="suggestion-label">RECOMMENDATION</span>
                     <span class="suggestion-value" id="trade-suggestion">WAIT</span>
                 </div>
+
+                <!-- PCR Badge (New) -->
+                <div class="pcr-badge" id="pcr-badge" style="display: none;">
+                    PCR: <span id="pcr-value">--</span>
+                </div>
             </div>
 
             <!-- Signal Indicator Legend -->
@@ -216,15 +221,19 @@
                 <div class="scalp-legend-items">
                     <div class="s-legend-item">
                         <span class="s-dot wait">⚪</span>
-                        <span><strong>WAIT</strong> = No clear trend or decay</span>
+                        <span><strong>WAIT</strong> = No clear trend</span>
                     </div>
                     <div class="s-legend-item">
                         <span class="s-dot call">🟢</span>
-                        <span><strong>BUY CALL</strong> = Bullish Sentiment + Rising Straddle</span>
+                        <span><strong>BUY CALL</strong> = Bullish + Rising Straddle ([PCR > 1.0] Supports)</span>
                     </div>
                     <div class="s-legend-item">
                         <span class="s-dot put">🔴</span>
-                        <span><strong>BUY PUT</strong> = Bearish Sentiment + Rising Straddle</span>
+                        <span><strong>BUY PUT</strong> = Bearish + Rising Straddle ([PCR < 0.7] Supports)</span>
+                    </div>
+                    <div class="s-legend-item">
+                        <span class="s-dot trap">⚠️</span>
+                        <span><strong>TRAP</strong> = High OI Contrast (Price vs Data Mismatch)</span>
                     </div>
                 </div>
             </div>
