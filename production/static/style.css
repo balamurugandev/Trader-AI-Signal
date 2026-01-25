@@ -52,14 +52,17 @@ body {
     line-height: 1.5;
 }
 
+/* Main Container */
 .container {
-    max-width: 1400px;
+    max-width: 95vw;
+    /* Utilize full width */
     margin: 0 auto;
-    padding: 20px;
+    padding: 10px 20px;
     display: flex;
     flex-direction: column;
     min-height: 100vh;
-    gap: 20px;
+    gap: 10px;
+    /* Tighter gap */
 }
 
 /* Header */
@@ -136,6 +139,44 @@ body {
     border-radius: 20px;
     font-size: 0.85rem;
     font-weight: 600;
+    font-weight: 600;
+}
+
+.market-status-badge {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    background: var(--bg-secondary);
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.market-status-badge.open {
+    color: var(--accent-green);
+    border: 1px solid rgba(0, 255, 136, 0.2);
+    box-shadow: 0 0 10px rgba(0, 255, 136, 0.1);
+}
+
+.market-status-badge.closed {
+    color: var(--accent-red);
+    border: 1px solid rgba(255, 77, 77, 0.2);
+    opacity: 0.8;
+}
+
+.market-status-badge .status-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: currentColor;
+    animation: pulse 2s infinite;
+}
+
+/* Pause animation for closed state if preferred */
+.market-status-badge.closed .status-dot {
+    animation: none;
 }
 
 .status-dot {
@@ -476,9 +517,11 @@ body {
 
 .scalping-grid {
     display: grid;
-    grid-template-columns: 1fr 2fr;
-    gap: 20px;
+    grid-template-columns: 1fr 2.5fr 1fr;
+    /* 3 Column Layout: Data | Chart | Signals */
+    gap: 16px;
     margin-bottom: 20px;
+    align-items: stretch;
 }
 
 .scalping-data-panel {
@@ -542,6 +585,34 @@ body {
     font-weight: 600;
     margin-bottom: 12px;
     text-align: center;
+    /* Flex alignment for inline value */
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.bias-value-inline {
+    font-family: var(--font-mono);
+    font-size: 1.5rem;
+    /* Bigger */
+    font-weight: 700;
+    padding: 4px 12px;
+    border-radius: 6px;
+    transition: all 0.3s ease;
+}
+
+.bias-value-inline.positive {
+    color: var(--accent-green);
+    background: rgba(0, 255, 136, 0.15);
+    text-shadow: 0 0 10px rgba(0, 255, 136, 0.5);
+    box-shadow: 0 0 15px rgba(0, 255, 136, 0.2);
+}
+
+.bias-value-inline.negative {
+    color: var(--accent-red);
+    background: rgba(255, 68, 102, 0.15);
+    text-shadow: 0 0 10px rgba(255, 68, 102, 0.5);
+    box-shadow: 0 0 15px rgba(255, 68, 102, 0.2);
 }
 
 .bias-gauge {
@@ -588,21 +659,7 @@ body {
     border-radius: 2px;
 }
 
-.bias-value {
-    font-family: var(--font-mono);
-    font-size: 1rem;
-    font-weight: 700;
-    min-width: 70px;
-    text-align: right;
-}
-
-.bias-value.positive {
-    color: var(--accent-green);
-}
-
-.bias-value.negative {
-    color: var(--accent-red);
-}
+/* Removed old .bias-value styles as it is now inline */
 
 .bias-labels {
     display: flex;
@@ -737,14 +794,61 @@ body {
 
 .chart-container {
     flex: 1;
-    min-height: 200px;
+    min-height: 300px;
+    /* Taller chart for better visibility */
     position: relative;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: var(--radius-md);
 }
 
 .chart-container canvas {
     width: 100% !important;
     height: 100% !important;
 }
+
+/* =============================================================================
+   NEW: SIGNAL PANEL STYLES (Col 3)
+============================================================================= */
+.scalping-signal-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+/* Vertical Legend */
+.signal-legend-vertical {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 16px;
+    background: var(--bg-secondary);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-color);
+}
+
+.scalp-legend-compact {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 12px;
+    font-size: 0.8rem;
+    color: var(--text-muted);
+}
+
+.s-legend-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* Adjusted Signal Box for Panel */
+.scalping-signal-box {
+    /* Existing style reuse, but ensuring it fits panel */
+    padding: 24px;
+    flex: 1;
+    /* Grow to fill space */
+}
+
 
 /* Signal Legend */
 .signal-legend {
@@ -978,3 +1082,65 @@ body {
     color: var(--accent-yellow);
     text-shadow: 0 0 10px rgba(255, 170, 0, 0.3);
 }
+
+/* Ticker Tape */
+/* Ticker Tape - Double Stacked */
+/* Ticker Tape - Grid Layout (3x2) */
+.ticker-tape {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    /* Exactly 3 columns */
+    gap: 16px;
+    /* Consistent gap */
+    padding: 16px 24px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    backdrop-filter: blur(10px);
+}
+
+.ticker-item {
+    display: flex;
+    justify-content: space-between;
+    /* Spread content inside item */
+    align-items: center;
+    padding: 12px 16px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    /* Subtle border for structure */
+    border-radius: 8px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    transition: background 0.2s ease;
+}
+
+.ticker-item:hover {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.ticker-name {
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    font-size: 0.8rem;
+    letter-spacing: 0.5px;
+}
+
+.ticker-value {
+    color: var(--text-primary);
+    font-family: var(--font-mono);
+}
+
+.ticker-change {
+    font-size: 0.85rem;
+    font-family: var(--font-mono);
+}
+
+.ticker-change.positive {
+    color: var(--accent-green);
+}
+
+.ticker-change.negative {
+    color: var(--accent-red);
+}
+
+/* Remove Tick Table Styles if no longer used, or just leave them */

@@ -70,12 +70,19 @@ function updateDashboard(data) {
     candleCount.textContent = `${data.candles_count}/200`;
 
     // Update price
-    if (data.last_price !== null) {
+    if (data.last_price !== null && currentPrice) {
         currentPrice.textContent = formatPrice(data.last_price);
     }
 
-    // Update tick history
-    updateTickTable(data.tick_history);
+    // Update Tick History
+    if (typeof updateTickTable === 'function') {
+        updateTickTable(data.tick_history);
+    }
+
+    // Update Ticker Tape (New)
+    if (data.tickers && typeof updateTickerTape === 'function') {
+        updateTickerTape(data.tickers);
+    }
 
     // Update indicators
     updateIndicators(data.rsi, data.ema, data.last_price);
@@ -84,7 +91,75 @@ function updateDashboard(data) {
     updateSignal(data.signal, data.candles_count);
 
     // Update timestamp
-    lastUpdate.textContent = `Last Update: ${new Date().toLocaleTimeString()}`;
+    if (lastUpdate) {
+        lastUpdate.textContent = `Last Update: ${new Date().toLocaleTimeString()}`;
+    }
+}
+
+function updateTickerTape(tickers) {
+    const tickerContainer = document.querySelector('.ticker-tape');
+    if (!tickerContainer) return;
+
+    // Helper to create HTML for a ticker item
+    const createTickerItem = (name, data) => {
+        const changeClass = data.change >= 0 ? 'positive' : 'negative';
+        const arrow = data.change >= 0 ? '▲' : '▼';
+        return `
+            <div class="ticker-item">
+                <span class="ticker-name">${name}</span>
+                <span class="ticker-value">${data.price.toFixed(2)}</span>
+                <span class="ticker-change ${changeClass}">
+                    ${data.change > 0 ? '+' : ''}${data.change.toFixed(2)} 
+                    (${data.p_change.toFixed(2)}%) ${arrow}
+                </span>
+            </div>
+        `;
+    };
+
+    // Re-render logic (optimized to avoid full redraw if possible, but innerHTML is fast enough for 5 items)
+    // To prevent scrolling reset, we should update values if elements exist, but for now simple innerHTML is robust.
+
+    // Check if we need to build structure or just update
+    // For smoothness, let's try to update in place if ids exist, otherwise rebuild for now.
+    // Actually, simple rebuild is fine for 100ms updates if the list is small.
+    // BUT resetting innerHTML might kill scroll position. Let's update intelligently.
+
+    // indices mapping
+    const indices = ['nifty', 'sensex', 'banknifty', 'midcpnifty', 'niftysmallcap', 'indiavix'];
+    const displayNames = {
+        'nifty': 'NIFTY 50', 'sensex': 'SENSEX', 'banknifty': 'BANKNIFTY',
+        'midcpnifty': 'MIDCPNIFTY', 'niftysmallcap': 'NIFTY SMALLCAP', 'indiavix': 'INDIA VIX'
+    };
+
+    // Check if structure exists, if not create it (FIRST RUN)
+    if (tickerContainer.children.length === 0 || tickerContainer.getAttribute('data-init') !== 'true') {
+        tickerContainer.innerHTML = indices.map(key => {
+            const data = tickers[key];
+            if (!data) return '';
+            return createTickerItem(displayNames[key], data);
+        }).join('');
+        tickerContainer.setAttribute('data-init', 'true');
+    } else {
+        // UPDATE IN PLACE to preserve scroll and selection
+        const items = Array.from(tickerContainer.children);
+        indices.forEach((key, index) => {
+            if (index >= items.length) return;
+            const data = tickers[key];
+            if (!data) return;
+
+            const item = items[index];
+            const valueEl = item.querySelector('.ticker-value');
+            const changeEl = item.querySelector('.ticker-change');
+
+            if (valueEl) valueEl.textContent = data.price.toFixed(2);
+            if (changeEl) {
+                const changeClass = data.change >= 0 ? 'positive' : 'negative';
+                const arrow = data.change >= 0 ? '▲' : '▼';
+                changeEl.className = `ticker-change ${changeClass}`;
+                changeEl.textContent = `${data.change > 0 ? '+' : ''}${data.change.toFixed(2)} (${data.p_change.toFixed(2)}%) ${arrow}`;
+            }
+        });
+    }
 }
 
 function updateStatus(status) {
@@ -107,7 +182,7 @@ function formatPrice(price) {
 }
 
 function updateTickTable(ticks) {
-    if (!ticks || ticks.length === 0) return;
+    if (!ticks || ticks.length === 0 || !tickTableBody) return;
 
     tickTableBody.innerHTML = ticks.map(tick => {
         const changeClass = tick.change > 0 ? 'change-positive' :
@@ -126,36 +201,46 @@ function updateTickTable(ticks) {
 
 function updateIndicators(rsi, ema, price) {
     // RSI
-    if (rsi !== null) {
+    if (rsi !== null && rsiValue) {
         rsiValue.textContent = rsi.toFixed(2);
 
         // Update RSI bar
-        rsiBar.style.width = `${rsi}%`;
-        rsiBar.classList.remove('oversold', 'overbought');
+        if (rsiBar) {
+            rsiBar.style.width = `${rsi}%`;
+            rsiBar.classList.remove('oversold', 'overbought');
 
-        if (rsi < 30) {
-            rsiStatus.textContent = '⬆️ OVERSOLD';
-            rsiStatus.style.color = '#00ff88';
-            rsiBar.classList.add('oversold');
-        } else if (rsi > 70) {
-            rsiStatus.textContent = '⬇️ OVERBOUGHT';
-            rsiStatus.style.color = '#ff4466';
-            rsiBar.classList.add('overbought');
-        } else {
-            rsiStatus.textContent = '↔️ NEUTRAL';
-            rsiStatus.style.color = '#ffaa00';
+            if (rsi < 30) {
+                rsiBar.classList.add('oversold');
+            } else if (rsi > 70) {
+                rsiBar.classList.add('overbought');
+            }
         }
-    } else {
+
+        if (rsiStatus) {
+            if (rsi < 30) {
+                rsiStatus.textContent = '⬆️ OVERSOLD';
+                rsiStatus.style.color = '#00ff88';
+            } else if (rsi > 70) {
+                rsiStatus.textContent = '⬇️ OVERBOUGHT';
+                rsiStatus.style.color = '#ff4466';
+            } else {
+                rsiStatus.textContent = '↔️ NEUTRAL';
+                rsiStatus.style.color = '#ffaa00';
+            }
+        }
+    } else if (rsiValue) {
         rsiValue.textContent = '--';
-        rsiStatus.textContent = 'Need more data...';
-        rsiStatus.style.color = '#a0a0b0';
+        if (rsiStatus) {
+            rsiStatus.textContent = 'Need more data...';
+            rsiStatus.style.color = '#a0a0b0';
+        }
     }
 
     // EMA
-    if (ema !== null) {
+    if (ema !== null && emaValue) {
         emaValue.textContent = `₹${formatPrice(ema)}`;
 
-        if (price !== null) {
+        if (price !== null && emaStatus) {
             if (price > ema) {
                 emaStatus.textContent = '⬆️ Price ABOVE EMA';
                 emaStatus.style.color = '#00ff88';
@@ -164,14 +249,18 @@ function updateIndicators(rsi, ema, price) {
                 emaStatus.style.color = '#ff4466';
             }
         }
-    } else {
+    } else if (emaValue) {
         emaValue.textContent = '--';
-        emaStatus.textContent = 'Need more data...';
-        emaStatus.style.color = '#a0a0b0';
+        if (emaStatus) {
+            emaStatus.textContent = 'Need more data...';
+            emaStatus.style.color = '#a0a0b0';
+        }
     }
 }
 
 function updateSignal(signal, candlesCount) {
+    if (!signalBox || !signalIcon || !signalText || !signalDesc) return;
+
     signalBox.classList.remove('waiting', 'buy-call', 'buy-put');
 
     if (signal === 'BUY CALL') {
@@ -546,13 +635,34 @@ async function updateScalper() {
 function updateDateTime() {
     const now = new Date();
 
-    // Format date: Fri, 24 Jan 2026
+    // Format date: Sun, 25 Jan, 2026
     const dateOptions = { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' };
-    const dateStr = now.toLocaleDateString('en-IN', dateOptions);
+    // Force "Sun, 25 Jan, 2026" - some locales might differ, manually constructing to be safe if needed, 
+    // but en-GB/IN usually does "Sun, 25 Jan 2026". 
+    // Let's use en-GB which is consistently "Sun, 25 Jan 2026" or similar.
+    // User asked for "Sun, 25 Jan, 2026".
+    const datePart = now.toLocaleDateString('en-GB', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' });
+    // en-GB gives "Sun, 25 Jan 2026". Adding comma manually if needed or accepting it.
+    // Let's try to match exactly. 
+    // Manual construction for precision:
+    const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const dayName = days[now.getDay()];
+    const dayNum = String(now.getDate()).padStart(2, '0');
+    const monthName = months[now.getMonth()];
+    const year = now.getFullYear();
+    const dateStr = `${dayName}, ${dayNum} ${monthName}, ${year}`;
 
-    // Format time: 11:17:43 PM IST
-    const timeOptions = { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true };
-    const timeStr = now.toLocaleTimeString('en-IN', timeOptions) + ' IST';
+    // Format time: 06:35:21 pm IST
+    let hours = now.getHours();
+    const minutes = String(now.getMinutes()).padStart(2, '0');
+    const seconds = String(now.getSeconds()).padStart(2, '0');
+    const ampm = hours >= 12 ? 'pm' : 'am';
+    hours = hours % 12;
+    hours = hours ? hours : 12; // the hour '0' should be '12'
+    const strHours = String(hours).padStart(2, '0');
+
+    const timeStr = `${strHours}:${minutes}:${seconds} ${ampm} IST`;
 
     const dateEl = document.getElementById('current-date');
     const timeEl = document.getElementById('current-time');
@@ -567,8 +677,39 @@ document.addEventListener('DOMContentLoaded', () => {
     initStraddleChart();
 
     // Update date/time every second
+    // Initial update
     updateDateTime();
     setInterval(updateDateTime, 1000);
+
+    // ==========================================================
+    // MARKET STATUS INDICATOR (NEW)
+    // ==========================================================
+    const marketSignalBadge = document.getElementById('market-status-badge');
+    const marketStateText = document.getElementById('market-state-text');
+
+    function updateMarketStatusIndicator() {
+        const now = new Date();
+
+        // Use the robust MarketSchedule logic from market_schedule.js
+        let status = { isOpen: false, statusText: "MARKET CLOSED", cssClass: "closed" };
+
+        if (typeof MarketSchedule !== 'undefined') {
+            status = MarketSchedule.getStatus(now);
+        }
+
+        if (marketSignalBadge && marketStateText) {
+            // Reset classes
+            marketSignalBadge.classList.remove('open', 'closed');
+
+            // Apply new status
+            marketSignalBadge.classList.add(status.cssClass);
+            marketStateText.textContent = status.statusText;
+        }
+    }
+
+    // Update immediately and then every minute
+    updateMarketStatusIndicator();
+    setInterval(updateMarketStatusIndicator, 60000); // Check every minute
 
     // Poll scalper data every 1 second
     setInterval(updateScalper, 1000);

@@ -1,0 +1,50 @@
+/* Ticker Tape */
+.ticker-tape {
+    display: flex;
+    align-items: center;
+    gap: 32px;
+    padding: 12px 24px;
+    background: var(--bg-card);
+    /* Glassmorphism background consistent with header */
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    backdrop-filter: blur(10px);
+    overflow-x: auto;
+    /* Allow scrolling if content overflows on small screens */
+    white-space: nowrap;
+}
+
+.ticker-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 0.9rem;
+    font-weight: 600;
+}
+
+.ticker-name {
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    font-size: 0.8rem;
+    letter-spacing: 0.5px;
+}
+
+.ticker-value {
+    color: var(--text-primary);
+    font-family: var(--font-mono);
+}
+
+.ticker-change {
+    font-size: 0.85rem;
+    font-family: var(--font-mono);
+}
+
+.ticker-change.positive {
+    color: var(--accent-green);
+}
+
+.ticker-change.negative {
+    color: var(--accent-red);
+}
+
+/* Remove Tick Table Styles if no longer used, or just leave them */

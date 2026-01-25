@@ -35,7 +35,7 @@ from SmartApi.smartWebSocketV2 import SmartWebSocketV2
 # =============================================================================
 # LOAD ENVIRONMENT VARIABLES FROM .env FILE
 # =============================================================================
-env_path = Path(__file__).parent / ".env"
+env_path = Path(__file__).parent.parent / ".env"
 load_dotenv(dotenv_path=env_path)
 
 # =============================================================================
