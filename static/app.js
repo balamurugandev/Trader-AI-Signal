@@ -217,6 +217,66 @@ const scalpSignalDesc = document.getElementById('scalp-signal-desc');
 // Chart.js instance
 let straddleChart = null;
 
+// Custom Plugin: Pulsing Dot + Price Label at Latest Point
+const lastPointPlugin = {
+    id: 'lastPointHighlight',
+    afterDatasetsDraw(chart) {
+        const dataset = chart.data.datasets[0];
+        if (!dataset || dataset.data.length === 0) return;
+
+        const lastIndex = dataset.data.length - 1;
+        const meta = chart.getDatasetMeta(0);
+        const lastPoint = meta.data[lastIndex];
+        if (!lastPoint) return;
+
+        const ctx = chart.ctx;
+        const x = lastPoint.x;
+        const y = lastPoint.y;
+        const value = dataset.data[lastIndex];
+
+        // Pulsing outer ring (animated via CSS on wrapper, here just static glow)
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(x, y, 8, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(255, 170, 0, 0.3)';
+        ctx.fill();
+
+        // Solid inner dot
+        ctx.beginPath();
+        ctx.arc(x, y, 4, 0, Math.PI * 2);
+        ctx.fillStyle = '#ffaa00';
+        ctx.fill();
+        ctx.restore();
+
+        // Price Label
+        ctx.save();
+        ctx.font = 'bold 11px Inter, sans-serif';
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'middle';
+
+        const text = `₹${value.toFixed(2)}`;
+        const textWidth = ctx.measureText(text).width;
+        const padding = 6;
+        const labelX = x + 12;
+        const labelY = y;
+
+        // Background pill
+        ctx.fillStyle = 'rgba(18, 18, 26, 0.9)';
+        ctx.strokeStyle = '#ffaa00';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.roundRect(labelX - padding, labelY - 10, textWidth + padding * 2, 20, 4);
+        ctx.fill();
+        ctx.stroke();
+
+        // Text
+        ctx.fillStyle = '#ffaa00';
+        ctx.fillText(text, labelX, labelY);
+        ctx.restore();
+    }
+};
+Chart.register(lastPointPlugin);
+
 function initStraddleChart() {
     const ctx = document.getElementById('straddleChart');
     if (!ctx) return;
