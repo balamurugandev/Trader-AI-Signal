@@ -217,10 +217,10 @@ const scalpSignalDesc = document.getElementById('scalp-signal-desc');
 // Chart.js instance
 let straddleChart = null;
 
-// Custom Plugin: Pulsing Dot + Price Label (DOM Overlay)
+// Custom Plugin: Pulsing Dot + Price Label (Canvas Draw)
 const lastPointPlugin = {
     id: 'lastPointHighlight',
-    afterDraw(chart) {
+    afterDatasetsDraw(chart) {
         const dataset = chart.data.datasets[0];
         if (!dataset || dataset.data.length === 0) return;
 
@@ -232,41 +232,69 @@ const lastPointPlugin = {
         const ctx = chart.ctx;
         const x = lastPoint.x;
         const y = lastPoint.y;
+        const value = dataset.data[lastIndex];
 
-        // 1. Draw Vertical Dashed Line (Alignment to Time Axis)
+        // 1. Draw Vertical Dashed Line
         ctx.save();
         ctx.beginPath();
         ctx.setLineDash([4, 4]);
-        ctx.strokeStyle = 'rgba(255, 170, 0, 0.5)';
+        ctx.strokeStyle = 'rgba(255, 170, 0, 0.4)'; // Faint line
         ctx.lineWidth = 1;
         ctx.moveTo(x, y);
-        ctx.lineTo(x, chart.chartArea.bottom); // Draw down to X-axis
+        ctx.lineTo(x, chart.chartArea.bottom);
         ctx.stroke();
         ctx.restore();
 
-        // 2. Position DOM Overlays (Pulse + Label)
-        const pulse = document.getElementById('chart-pulse');
-        const label = document.getElementById('chart-price-label');
+        // 2. Draw Pulsing Dot (Static Glow for Performance)
+        ctx.save();
+        // Outer Glow
+        ctx.beginPath();
+        ctx.arc(x, y, 10, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(255, 170, 0, 0.25)';
+        ctx.fill();
+        // Inner Glow
+        ctx.beginPath();
+        ctx.arc(x, y, 6, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(255, 170, 0, 0.5)';
+        ctx.fill();
+        // Solid Center
+        ctx.beginPath();
+        ctx.arc(x, y, 3, 0, Math.PI * 2);
+        ctx.fillStyle = '#ffaa00';
+        ctx.fill();
+        ctx.restore();
 
-        if (pulse && label) {
-            // Unhide elements
-            pulse.style.display = 'block';
-            label.style.display = 'block';
+        // 3. Draw Price Label (Canvas Text)
+        if (value !== undefined && value !== null) {
+            ctx.save();
+            ctx.font = 'bold 11px Inter, sans-serif';
+            ctx.textBaseline = 'middle';
 
-            // Position Pulse at tip (x, y)
-            pulse.style.left = `${x}px`;
-            pulse.style.top = `${y}px`;
+            const text = `₹${value.toFixed(2)}`;
+            const textWidth = ctx.measureText(text).width;
+            const paddingX = 6;
+            const paddingY = 4;
+            const labelX = x + 15; // Offset to right
+            const labelY = y;
 
-            // Position Label (Right Aligned)
-            // Move it slightly right (x + 15)
-            label.style.left = `${x + 15}px`;
-            label.style.top = `${y}px`;
+            // Background Pill
+            ctx.fillStyle = 'rgba(18, 18, 26, 0.95)';
+            ctx.strokeStyle = '#ffaa00';
+            ctx.lineWidth = 1;
 
-            // Update Text
-            const value = dataset.data[lastIndex];
-            if (value !== undefined && value !== null) {
-                label.textContent = `₹${value.toFixed(2)}`;
+            ctx.beginPath();
+            if (ctx.roundRect) {
+                ctx.roundRect(labelX - paddingX, labelY - 10, textWidth + paddingX * 2, 20, 4);
+            } else {
+                ctx.rect(labelX - paddingX, labelY - 10, textWidth + paddingX * 2, 20);
             }
+            ctx.fill();
+            ctx.stroke();
+
+            // Text
+            ctx.fillStyle = '#ffaa00';
+            ctx.fillText(text, labelX, labelY);
+            ctx.restore();
         }
     }
 };

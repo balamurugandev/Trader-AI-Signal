@@ -516,9 +516,9 @@ def update_scalping_data():
                 current_atm = current_atm_strike
             
             # Fetch LTPs using proper trading symbols
-            fut_ltp = fetch_ltp(smart_api, "NFO", future_symbol, future_token) if future_token else None
-            ce_ltp = fetch_ltp(smart_api, "NFO", ce_symbol, atm_ce_token) if atm_ce_token else None
-            pe_ltp = fetch_ltp(smart_api, "NFO", pe_symbol, atm_pe_token) if atm_pe_token else None
+            fut_ltp = fetch_ltp(smart_api_global, "NFO", future_symbol, future_token) if future_token else None
+            ce_ltp = fetch_ltp(smart_api_global, "NFO", ce_symbol, atm_ce_token) if atm_ce_token else None
+            pe_ltp = fetch_ltp(smart_api_global, "NFO", pe_symbol, atm_pe_token) if atm_pe_token else None
             
             poll_count += 1
             if poll_count % 10 == 1:  # Log every 10th poll
