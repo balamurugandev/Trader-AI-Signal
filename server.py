@@ -367,7 +367,11 @@ def fetch_ltp(smart_api, exchange: str, trading_symbol: str, token: str) -> Opti
         elif data and data.get('message'):
             print(f"⚠️ LTP error for {trading_symbol}: {data.get('message')}")
     except Exception as e:
-        print(f"⚠️ LTP fetch error for {trading_symbol}: {e}")
+        error_str = str(e)
+        if "ConnectTimeoutError" in error_str or "Max retries exceeded" in error_str:
+            print(f"⚠️ Network Timeout fetching {trading_symbol}. Retrying...")
+        else:
+            print(f"⚠️ LTP fetch error for {trading_symbol}: {error_str}")
     return None
 
 

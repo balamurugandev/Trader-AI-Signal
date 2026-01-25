@@ -143,3 +143,17 @@ Run this simulation to verify logic upgrades before deploying to production.
 ---
 
 **Disclaimer**: This tool is for educational purposes only. Trading Options involves high risk. Use at your own discretion.
+
+---
+
+## ❓ Troubleshooting
+
+### ⚠️ "Network Timeout fetching..."
+If you see these errors in the terminal:
+> `⚠️ Network Timeout fetching NIFTY27JAN2625050CE. Retrying...`
+> `Max retries exceeded with url...`
+
+**Solution:**
+1.  **Check Internet**: Your connection to Angel One API is unstable.
+2.  **Ignore**: The system automatically retries on the next poll (every 1 second). Pushing through occasional errors is normal.
+3.  **VPN**: If consistent, try disabling/enabling VPN as some IPs are rate-limited by Angel One.
