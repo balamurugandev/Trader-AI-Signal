@@ -4,6 +4,36 @@ A professional-grade, real-time web dashboard for scalping NIFTY 50 options. Thi
 
 ---
 
+## 🚀 Installation & Setup
+
+### 1. Clone the Repository
+```bash
+git clone https://github.com/balamurugandev/Trader-AI-Signal.git
+cd Trader-AI-Signal
+```
+
+### 2. Install Dependencies
+```bash
+pip install -r requirements.txt
+```
+
+### 3. Configure Credentials
+Create a `.env` file in the root directory:
+```env
+API_KEY=your_angel_one_api_key
+CLIENT_ID=your_client_id
+PASSWORD=your_password
+TOTP_SECRET=your_totp_secret
+```
+
+### 4. Run the Dashboard
+```bash
+python3 server.py
+# Server will start at http://localhost:8000
+```
+
+---
+
 ## 🌟 Key Features
 
 - **Real-Time Data**: Ultra-fast updates via SmartAPI WebSockets.
@@ -92,36 +122,6 @@ Run this simulation to verify logic upgrades before deploying to production.
 - **Data**: Angel One SmartAPI (WebSocket & REST)
 - **Frontend**: Vanilla JavaScript (WebSockets), HTML5, CSS3 (Variables, Flexbox)
 - **Charting**: Chart.js (Real-time visualizations)
-
----
-
-## 🚀 Installation & Setup
-
-### 1. Clone the Repository
-```bash
-git clone https://github.com/balamurugandev/Trader-AI-Signal.git
-cd Trader-AI-Signal
-```
-
-### 2. Install Dependencies
-```bash
-pip install -r requirements.txt
-```
-
-### 3. Configure Credentials
-Create a `.env` file in the root directory:
-```env
-API_KEY=your_angel_one_api_key
-CLIENT_ID=your_client_id
-PASSWORD=your_password
-TOTP_SECRET=your_totp_secret
-```
-
-### 4. Run the Dashboard
-```bash
-python3 server.py
-# Server will start at http://localhost:8000
-```
 
 ---
 
