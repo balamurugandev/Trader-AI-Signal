@@ -30,11 +30,12 @@ TOTP_SECRET=your_totp_secret
 
 ## ▶️ How to Run (Daily Usage)
 
-Once installed, simply run this command from the project folder:
-```bash
-python3 server.py
-```
-> The dashboard will start automatically at **http://localhost:8000**
+1. Run the server:
+   ```bash
+   python3 server.py
+   ```
+2. **Open your browser** and navigate to:
+   👉 **http://localhost:8000**
 
 ---
 
