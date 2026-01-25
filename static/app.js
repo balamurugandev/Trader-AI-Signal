@@ -217,7 +217,7 @@ const scalpSignalDesc = document.getElementById('scalp-signal-desc');
 // Chart.js instance
 let straddleChart = null;
 
-// Custom Plugin: Pulsing Dot + Price Label at Latest Point
+// Custom Plugin: Pulsing Dot + Price Label (DOM Overlay)
 const lastPointPlugin = {
     id: 'lastPointHighlight',
     afterDraw(chart) {
@@ -232,72 +232,60 @@ const lastPointPlugin = {
         const ctx = chart.ctx;
         const x = lastPoint.x;
         const y = lastPoint.y;
-        const value = dataset.data[lastIndex];
 
+        // 1. Draw Vertical Dashed Line (Alignment to Time Axis)
         ctx.save();
-
-        // 1. Pulsing Halo (Simulated with static glow but larger)
-        // To animate, we'd need requestAnimationFrame, but that kills performance.
-        // We use a large semi-transparent halo to make it "pop".
         ctx.beginPath();
-        ctx.arc(x, y, 12, 0, Math.PI * 2);
-        ctx.fillStyle = 'rgba(255, 170, 0, 0.25)';
-        ctx.fill();
-
-        ctx.beginPath();
-        ctx.arc(x, y, 8, 0, Math.PI * 2);
-        ctx.fillStyle = 'rgba(255, 170, 0, 0.4)';
-        ctx.fill();
-
-        // 2. Solid Inner Dot
-        ctx.beginPath();
-        ctx.arc(x, y, 4, 0, Math.PI * 2);
-        ctx.fillStyle = '#ffaa00';
-        ctx.fill();
-        ctx.strokeStyle = '#fff';
-        ctx.lineWidth = 1.5;
-        ctx.stroke();
-
-        // 3. Price Label
-        ctx.font = 'bold 12px Inter, sans-serif';
-        ctx.textAlign = 'left';
-        ctx.textBaseline = 'middle';
-
-        const text = `₹${value.toFixed(2)}`;
-        const textWidth = ctx.measureText(text).width;
-        const paddingX = 8;
-        const paddingY = 4;
-        const labelX = x + 18; // Offset further right
-        const labelY = y;
-
-        // Draw Label Background (Pill)
-        ctx.fillStyle = 'rgba(20, 20, 30, 0.95)';
-        ctx.strokeStyle = '#ffaa00';
+        ctx.setLineDash([4, 4]);
+        ctx.strokeStyle = 'rgba(255, 170, 0, 0.5)';
         ctx.lineWidth = 1;
-
-        // Use rect if roundRect fails in older browsers, but roundRect is standard now
-        if (ctx.roundRect) {
-            ctx.beginPath();
-            ctx.roundRect(labelX - paddingX, labelY - 12, textWidth + paddingX * 2, 24, 4);
-            ctx.fill();
-            ctx.stroke();
-        } else {
-            ctx.fillRect(labelX - paddingX, labelY - 12, textWidth + paddingX * 2, 24);
-            ctx.strokeRect(labelX - paddingX, labelY - 12, textWidth + paddingX * 2, 24);
-        }
-
-        // Draw Text
-        ctx.fillStyle = '#ffaa00';
-        ctx.fillText(text, labelX, labelY);
-
+        ctx.moveTo(x, y);
+        ctx.lineTo(x, chart.chartArea.bottom); // Draw down to X-axis
+        ctx.stroke();
         ctx.restore();
+
+        // 2. Position DOM Overlays (Pulse + Label)
+        const pulse = document.getElementById('chart-pulse');
+        const label = document.getElementById('chart-price-label');
+
+        if (pulse && label) {
+            // Unhide elements
+            pulse.style.display = 'block';
+            label.style.display = 'block';
+
+            // Position Pulse at tip (x, y)
+            pulse.style.left = `${x}px`;
+            pulse.style.top = `${y}px`;
+
+            // Position Label (Right Aligned)
+            // Move it slightly right (x + 15)
+            label.style.left = `${x + 15}px`;
+            label.style.top = `${y}px`;
+
+            // Update Text
+            const value = dataset.data[lastIndex];
+            if (value !== undefined && value !== null) {
+                label.textContent = `₹${value.toFixed(2)}`;
+            }
+        }
     }
 };
-Chart.register(lastPointPlugin);
 
 function initStraddleChart() {
     const ctx = document.getElementById('straddleChart');
     if (!ctx) return;
+
+    // Safe Registration: Check if Chart is loaded
+    if (typeof Chart !== 'undefined') {
+        const registry = Chart.registry || Chart.defaults; // fallback
+        // Avoid re-registering if already done (though Chart.js handles it usually)
+        if (Chart.register) {
+            Chart.register(lastPointPlugin);
+        }
+    } else {
+        console.error("Chart.js library not loaded!");
+        return;
+    }
 
     straddleChart = new Chart(ctx, {
         type: 'line',

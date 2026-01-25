@@ -406,32 +406,41 @@ def fetch_oi_data(smart_api):
             print(f"⚠️ OI Fetch error: {e}")
             time.sleep(30)
 
-def update_scalping_data(smart_api):
+def update_scalping_data():
     """
     Background thread to poll Future/Options prices and calculate Basis/Straddle.
-    
-    DYNAMIC ATM TRACKING (w/ HYSTERESIS):
-    - On every spot tick, recalculates ATM strike
-    - Only switches ATM if Spot moves > 15 pts beyond midpoint (Hysteresis)
-    - Prevents flicker
     """
     global future_token, atm_ce_token, atm_pe_token
     global last_future_price, last_ce_price, last_pe_price
     global last_basis, straddle_price, scalping_signal, scalping_status
     global current_atm_strike, real_basis, sentiment, straddle_trend, straddle_sma3, trade_suggestion
-    global is_trap, raw_basis_history, pcr_value
+    global is_trap, raw_basis_history, pcr_value, smart_api_global, market_status
     
     print("🚀 Scalping Module thread started")
-    print("   Dynamic ATM Tracking: ENABLED (w/ Hysteresis)")
-    print("   Relative Sentiment: ENABLED (Z-Score)")
     
-    # Wait for initial spot price
-    while last_price is None:
-        time.sleep(1)
-        print("   Waiting for spot price...")
+    # 1. Setup Phase: Wait for Auth + Spot
+    while True:
+        if smart_api_global is None:
+            scalping_status = market_status
+            time.sleep(1)
+            continue
+            
+        if last_price is None:
+            scalping_status = "Waiting for Spot Price..."
+            time.sleep(1)
+            continue
+            
+        break # Ready to start
+
+    print("   Waiting for spot price... DONE")
         
     # Fetch initial tokens
-    tokens = get_option_tokens(smart_api, last_price)
+    try:
+        tokens = get_option_tokens(smart_api_global, last_price)
+    except Exception as e:
+        print(f"Token fetch error: {e}")
+        time.sleep(2)
+        return update_scalping_data() # Retry setup
     future_token = tokens.get('future')
     atm_ce_token = tokens.get('ce')
     atm_pe_token = tokens.get('pe')
@@ -450,6 +459,12 @@ def update_scalping_data(smart_api):
     
     while True:
         try:
+            # Check Auth Status dynamically
+            if smart_api_global is None:
+                scalping_status = market_status
+                time.sleep(1)
+                continue
+                
             time.sleep(SCALPING_POLL_INTERVAL)
             
             spot = last_price
@@ -483,7 +498,7 @@ def update_scalping_data(smart_api):
                 print(f"{'='*60}")
                 
                 time.sleep(0.5)  # Rate limit before token refresh
-                tokens = get_option_tokens(smart_api, spot)
+                tokens = get_option_tokens(smart_api_global, spot)
                 
                 future_token = tokens.get('future')
                 atm_ce_token = tokens.get('ce')
@@ -851,18 +866,46 @@ async def startup_event():
     global smart_api_global
     
     def run_angel_websocket():
-        global smart_api_global
-        try:
-            smart_api_global, auth_tokens = authenticate()
-            start_websocket(auth_tokens)
-        except Exception as e:
-            print(f"Failed to start WebSocket: {e}")
+        global smart_api_global, market_status
+        retry_delay = 5
+        
+        while True:
+            try:
+                # 1. Update status
+                market_status = "Authenticating..."
+                if smart_api_global is None:
+                     smart_api_global, auth_tokens = authenticate()
+                
+                # 2. Check if auth succeeded (authenticate logic might differ)
+                if not smart_api_global:
+                    raise Exception("Auth returned None")
+
+                market_status = "Connecting to WebSocket..."
+                # 3. Start Websocket (This blocks if implemented as running loop, or returns)
+                # Assuming start_websocket runs monitoring loop or proper connection
+                start_websocket(auth_tokens)
+                
+                # If start_websocket returns cleanly, we might want to break or retry depending on implementation
+                # But usually websockets run forever. If it returns, it might mean disconnect.
+                print("WebSocket disconnected. Reconnecting in 5s...")
+                time.sleep(5)
+                
+            except Exception as e:
+                error_str = str(e)
+                if "ConnectTimeout" in error_str or "ConnectionPool" in error_str:
+                    msg = "Network Timeout. Retrying..."
+                else:
+                    msg = f"Auth Error: {error_str[:30]}..."
+                
+                print(f"❌ {msg} ({error_str})")
+                market_status = f"🔴 {msg}"
+                time.sleep(retry_delay)
+                # Exponential backoff cap at 30s
+                retry_delay = min(retry_delay * 2, 30)
     
     def run_scalping_module():
-        # Wait for smart_api to be initialized
-        while smart_api_global is None:
-            time.sleep(1)
-        update_scalping_data(smart_api_global)
+        # Start immediately, loop handles checks
+        update_scalping_data()
     
     thread = threading.Thread(target=run_angel_websocket, daemon=True)
     thread.start()

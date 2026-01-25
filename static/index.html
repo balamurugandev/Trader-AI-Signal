@@ -174,8 +174,11 @@
                         <h2>📈 Straddle Price Chart</h2>
                         <span class="scalping-status" id="scalping-status">INITIALIZING...</span>
                     </div>
-                    <div class="chart-container">
+                    <div class="chart-container" id="chart-container-wrapper">
                         <canvas id="straddleChart"></canvas>
+                        <!-- Overlays -->
+                        <div id="chart-pulse" class="chart-pulse"></div>
+                        <div id="chart-price-label" class="chart-price-label"></div>
                     </div>
 
                     <!-- Signal Legend -->
@@ -246,7 +249,7 @@
         </footer>
     </div>
 
-    <script src="/static/app.js"></script>
+    <script src="/static/app.js?v=fixed2"></script>
 </body>
 
 </html>
