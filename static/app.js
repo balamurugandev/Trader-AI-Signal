@@ -220,7 +220,7 @@ let straddleChart = null;
 // Custom Plugin: Pulsing Dot + Price Label at Latest Point
 const lastPointPlugin = {
     id: 'lastPointHighlight',
-    afterDatasetsDraw(chart) {
+    afterDraw(chart) {
         const dataset = chart.data.datasets[0];
         if (!dataset || dataset.data.length === 0) return;
 
@@ -234,44 +234,62 @@ const lastPointPlugin = {
         const y = lastPoint.y;
         const value = dataset.data[lastIndex];
 
-        // Pulsing outer ring (animated via CSS on wrapper, here just static glow)
         ctx.save();
+
+        // 1. Pulsing Halo (Simulated with static glow but larger)
+        // To animate, we'd need requestAnimationFrame, but that kills performance.
+        // We use a large semi-transparent halo to make it "pop".
         ctx.beginPath();
-        ctx.arc(x, y, 8, 0, Math.PI * 2);
-        ctx.fillStyle = 'rgba(255, 170, 0, 0.3)';
+        ctx.arc(x, y, 12, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(255, 170, 0, 0.25)';
         ctx.fill();
 
-        // Solid inner dot
+        ctx.beginPath();
+        ctx.arc(x, y, 8, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(255, 170, 0, 0.4)';
+        ctx.fill();
+
+        // 2. Solid Inner Dot
         ctx.beginPath();
         ctx.arc(x, y, 4, 0, Math.PI * 2);
         ctx.fillStyle = '#ffaa00';
         ctx.fill();
-        ctx.restore();
+        ctx.strokeStyle = '#fff';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
 
-        // Price Label
-        ctx.save();
-        ctx.font = 'bold 11px Inter, sans-serif';
+        // 3. Price Label
+        ctx.font = 'bold 12px Inter, sans-serif';
         ctx.textAlign = 'left';
         ctx.textBaseline = 'middle';
 
         const text = `₹${value.toFixed(2)}`;
         const textWidth = ctx.measureText(text).width;
-        const padding = 6;
-        const labelX = x + 12;
+        const paddingX = 8;
+        const paddingY = 4;
+        const labelX = x + 18; // Offset further right
         const labelY = y;
 
-        // Background pill
-        ctx.fillStyle = 'rgba(18, 18, 26, 0.9)';
+        // Draw Label Background (Pill)
+        ctx.fillStyle = 'rgba(20, 20, 30, 0.95)';
         ctx.strokeStyle = '#ffaa00';
         ctx.lineWidth = 1;
-        ctx.beginPath();
-        ctx.roundRect(labelX - padding, labelY - 10, textWidth + padding * 2, 20, 4);
-        ctx.fill();
-        ctx.stroke();
 
-        // Text
+        // Use rect if roundRect fails in older browsers, but roundRect is standard now
+        if (ctx.roundRect) {
+            ctx.beginPath();
+            ctx.roundRect(labelX - paddingX, labelY - 12, textWidth + paddingX * 2, 24, 4);
+            ctx.fill();
+            ctx.stroke();
+        } else {
+            ctx.fillRect(labelX - paddingX, labelY - 12, textWidth + paddingX * 2, 24);
+            ctx.strokeRect(labelX - paddingX, labelY - 12, textWidth + paddingX * 2, 24);
+        }
+
+        // Draw Text
         ctx.fillStyle = '#ffaa00';
         ctx.fillText(text, labelX, labelY);
+
         ctx.restore();
     }
 };
@@ -298,6 +316,13 @@ function initStraddleChart() {
             }]
         },
         options: {
+            layout: {
+                padding: {
+                    right: 80, // Space for the floating label
+                    top: 20,
+                    bottom: 20
+                }
+            },
             responsive: true,
             maintainAspectRatio: false,
             animation: { duration: 0 },
