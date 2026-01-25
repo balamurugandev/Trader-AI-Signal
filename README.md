@@ -4,7 +4,7 @@ A professional-grade, real-time web dashboard for scalping NIFTY 50 options. Thi
 
 ---
 
-## 🚀 Installation & Setup
+## 🚀 First-Time Setup
 
 ### 1. Clone the Repository
 ```bash
@@ -26,11 +26,15 @@ PASSWORD=your_password
 TOTP_SECRET=your_totp_secret
 ```
 
-### 4. Run the Dashboard
+---
+
+## ▶️ How to Run (Daily Usage)
+
+Once installed, simply run this command from the project folder:
 ```bash
 python3 server.py
-# Server will start at http://localhost:8000
 ```
+> The dashboard will start automatically at **http://localhost:8000**
 
 ---
 
