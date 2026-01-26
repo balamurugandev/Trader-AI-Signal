@@ -30,12 +30,35 @@
 
     /* Typography */
     --font-main: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-    --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+    /* 
+       UNIFIED FONT STRATEGY: 
+       To match professional broker sites (e.g. StockMojo), we typically DO NOT use 
+       monospace fonts (like JetBrains Mono) for prices. We use the Main Sans-Serif font 
+       but with 'tabular-nums' feature to ensure vertical alignment.
+       
+       Redefining --font-mono to alias --font-main + tabular behavior.
+    */
+    --font-mono: 'Inter', sans-serif;
 
     /* Spacing */
     --radius-sm: 8px;
     --radius-md: 12px;
     --radius-lg: 16px;
+}
+
+/* Global Modifier for Tabular Numbers (applies to anything using the 'mono' class concept) */
+.ticker-value,
+.ticker-change,
+.stat-value,
+.price-value,
+.indicator-value,
+.scalp-value,
+.bias-value-inline,
+.straddle-value,
+.tick-table {
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.5px;
+    /* Tighter, more modern number spacing */
 }
 
 * {
