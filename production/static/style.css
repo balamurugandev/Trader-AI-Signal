@@ -4,32 +4,43 @@
 ============================================================================= */
 
 :root {
-    /* Colors - Ocean Blue Theme (StockMojo Inspired) */
-    --bg-primary: #2f3f4f;
-    /* Extracted Ocean Blue */
-    --bg-secondary: #263442;
-    /* Slightly darker shade for contrast */
-    --bg-card: rgba(38, 52, 66, 0.4);
-    /* Translucent blue-grey */
-    --bg-card-hover: rgba(38, 52, 66, 0.6);
+    /* Colors - Official StockMojo Palette (Extracted) */
+    --bg-primary: #101827;
+    /* Deep Night Blue */
+    --bg-secondary: #1e2b3a;
+    /* Slate Blue Cards */
+    --bg-card: #1e2b3a;
+    /* Solid Slate for better contrast */
+    --bg-card-hover: #2d3f52;
 
-    --text-primary: #ffffff;
-    --text-secondary: #d0d0e0;
-    /* Brightened from #a0a0b0 */
-    --text-muted: #9090a8;
-    /* Brightened from #606070 */
+    /* Header Differentiation */
+    --bg-header: rgba(30, 43, 58, 0.95);
+    /* Distinct from main BG */
+    --border-header: 1px solid rgba(148, 163, 184, 0.2);
 
-    --accent-green: #00ff88;
-    --accent-green-bg: rgba(0, 255, 136, 0.1);
-    --accent-red: #ff4466;
-    --accent-red-bg: rgba(255, 68, 102, 0.1);
-    --accent-blue: #00aaff;
-    --accent-yellow: #ffaa00;
-    --accent-grey: #666680;
+    /* Accents */
+    --accent-red-bg: #451a04;
+    /* Deep Bearish Red */
+    --accent-purple-bg: #3a0a64;
+    /* Deep Purple */
+    --accent-green-bg: #064e3b;
+    /* Deep Forest Green */
 
-    --border-color: rgba(255, 255, 255, 0.08);
-    --glow-green: 0 0 30px rgba(0, 255, 136, 0.3);
-    --glow-red: 0 0 30px rgba(255, 68, 102, 0.3);
+    --text-primary: #f8fafc;
+    /* Slate-50 */
+    --text-secondary: #cbd5e1;
+    /* Slate-300 */
+    --text-muted: #94a3b8;
+    /* Slate-400 */
+
+    --accent-green: #22c55e;
+    --accent-red: #ef4444;
+    --accent-blue: #38bdf8;
+    --accent-yellow: #f59e0b;
+    --accent-grey: #64748b;
+
+    --glow-green: 0 0 20px rgba(34, 197, 94, 0.2);
+    --glow-red: 0 0 20px rgba(239, 68, 68, 0.2);
 
     /* Typography */
     --font-main: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
@@ -103,10 +114,13 @@ body {
     justify-content: space-between;
     align-items: center;
     padding: 16px 24px;
-    background: var(--bg-card);
-    border: 1px solid var(--border-color);
+    background: var(--bg-header);
+    /* Distinct Header BG */
+    border-bottom: var(--border-header);
+    /* Specific Border */
     border-radius: var(--radius-lg);
     backdrop-filter: blur(10px);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
 }
 
 .header-left {
