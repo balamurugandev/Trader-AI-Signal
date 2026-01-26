@@ -703,40 +703,50 @@ body {
 .bias-value-inline {
     font-family: var(--font-mono);
     font-size: 1.5rem;
-    /* Bigger */
     font-weight: 700;
-    padding: 4px 12px;
-    border-radius: 6px;
+    padding: 2px 0;
+    /* Minimal padding */
     transition: all 0.3s ease;
+    /* Removed background/borders for cleaner text-only look */
 }
 
+/* Matte Finish - No Glows */
 .bias-value-inline.positive {
     color: var(--accent-green);
-    background: rgba(0, 255, 136, 0.15);
-    text-shadow: 0 0 10px rgba(0, 255, 136, 0.5);
-    box-shadow: 0 0 15px rgba(0, 255, 136, 0.2);
+    background: transparent;
+    text-shadow: none;
+    box-shadow: none;
 }
 
 .bias-value-inline.negative {
     color: var(--accent-red);
-    background: rgba(255, 68, 102, 0.15);
-    text-shadow: 0 0 10px rgba(255, 68, 102, 0.5);
-    box-shadow: 0 0 15px rgba(255, 68, 102, 0.2);
+    background: transparent;
+    text-shadow: none;
+    box-shadow: none;
 }
 
 .bias-gauge {
     display: flex;
     align-items: center;
     gap: 12px;
+    margin-top: 8px;
+    /* Spacing */
+    height: 16px;
+    /* Explicit height container */
 }
 
 .bias-bar {
     flex: 1;
-    height: 12px;
-    background: linear-gradient(90deg, var(--accent-red) 0%, var(--bg-primary) 50%, var(--accent-green) 100%);
-    border-radius: 6px;
+    height: 8px;
+    /* Slimmer, cleaner bar */
+    /* Explicit Gradient using the new Variables */
+    background: linear-gradient(90deg, var(--accent-red-bg) 0%, #334155 50%, var(--accent-green-bg) 100%);
+    border-radius: 4px;
     position: relative;
-    overflow: hidden;
+    overflow: visible;
+    /* changed to visible to see center marker clearly */
+    background-color: rgba(255, 255, 255, 0.05);
+    /* Fallback track */
 }
 
 .bias-fill {
@@ -746,15 +756,20 @@ body {
     height: 100%;
     width: 0;
     transition: all 0.3s ease;
+    border-radius: 4px;
+    opacity: 0.8;
+    /* Matte fill */
 }
 
 .bias-fill.positive {
     background: var(--accent-green);
+    box-shadow: none;
 }
 
 .bias-fill.negative {
     background: var(--accent-red);
     transform: translateX(-100%);
+    box-shadow: none;
 }
 
 /* PCR Badge in Signal Box */
@@ -771,7 +786,7 @@ body {
     color: var(--text-secondary);
     padding: 6px 16px;
     background: rgba(255, 255, 255, 0.05);
-    border-radius: 12px;
+    border-radius: 6px;
     border: 1px solid var(--border-color);
 }
 
@@ -779,11 +794,12 @@ body {
     position: absolute;
     top: -4px;
     left: 50%;
-    width: 4px;
-    height: 20px;
-    background: var(--text-primary);
+    width: 2px;
+    /* Thinner center marker */
+    height: 16px;
+    background: var(--text-secondary);
     transform: translateX(-50%);
-    border-radius: 2px;
+    z-index: 2;
 }
 
 /* Removed old .bias-value styles as it is now inline */
