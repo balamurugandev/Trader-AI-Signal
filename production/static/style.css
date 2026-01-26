@@ -131,21 +131,25 @@ body {
     gap: 4px;
 }
 
-.header-left .logo-row {
+.logo-container {
     display: flex;
-    align-items: baseline;
-    gap: 12px;
+    align-items: center;
+    gap: 8px;
+}
+
+.logo-image {
+    width: 24px;
+    height: 24px;
+    object-fit: contain;
 }
 
 .logo {
-    font-size: 1.5rem;
+    font-family: var(--font-main);
+    /* Inter - Clean Professional */
+    font-size: 1.2rem;
     font-weight: 700;
+    color: var(--text-primary);
     letter-spacing: -0.5px;
-}
-
-.subtitle {
-    color: var(--text-secondary);
-    font-size: 0.9rem;
 }
 
 /* Header Date/Time Display */
