@@ -153,6 +153,8 @@ last_price_for_velocity: float = 0.0 # V6: For tracking change
 raw_basis_history: deque = deque(maxlen=300)  # For Z-Score (300 ticks ~ 5 mins)
 pcr_value: Optional[float] = None
 is_trap = False
+last_tick_timestamp: float = 0.0  # Time of last received tick (for latency)
+points_per_sec: float = 0.0  # Current velocity (points/sec)
 
 # =============================================================================
 # INDEX TOKENS & REAL-TIME DATA (NEW)
@@ -565,6 +567,7 @@ def update_scalping_data():
     global is_trap, raw_basis_history, pcr_value, smart_api_global, market_status
     global momentum_buffer, last_price_for_velocity # V6 Fix: Added missing globals
     global current_ce_symbol, current_pe_symbol  # Full symbol names for UI
+    global last_tick_timestamp, points_per_sec # V7: Health Checks
     
     print("🚀 Scalping Module thread started")
     
@@ -694,6 +697,11 @@ def update_scalping_data():
                 last_ce_price = ce_ltp
                 last_pe_price = pe_ltp
                 current_atm_strike = current_atm
+                
+                # Health Checks (V7)
+                last_tick_timestamp = time.time()
+                if 'current_velocity' in locals():
+                    points_per_sec = round(current_velocity, 2)
                 
                 # ============================================================
                 # SYNTHETIC BASIS CALCULATION (Professional Logic)
@@ -1053,6 +1061,8 @@ async def get_scalper_data():
             "atm_strike": current_atm_strike,  # Current ATM Strike
             "ce_symbol": current_ce_symbol,  # Full CE Symbol Name
             "pe_symbol": current_pe_symbol,  # Full PE Symbol Name
+            "latency_ms": int((time.time() - last_tick_timestamp) * 1000) if last_tick_timestamp > 0 else 0, # ms latency
+            "velocity": points_per_sec, # Velocity in points/sec
             "history": list(scalping_history)[-50:]
         }
 

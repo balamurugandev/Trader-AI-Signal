@@ -590,7 +590,7 @@ async function updateScalper() {
         // Update ATM Strike badges with full symbol names
         const ceStrike = document.getElementById('ce-strike');
         const peStrike = document.getElementById('pe-strike');
-        
+
         // Format symbol: "NIFTY27JAN2525050CE" -> "27 Jan 25050CE"
         const formatSymbol = (symbol) => {
             if (!symbol || symbol.length < 10) return symbol;
@@ -598,19 +598,21 @@ async function updateScalper() {
             const match = symbol.match(/NIFTY(\d{2})([A-Z]{3})(\d{2})(\d+)(CE|PE)/);
             if (match) {
                 const [, day, month, year, strike, type] = match;
-                const monthMap = {JAN:'Jan', FEB:'Feb', MAR:'Mar', APR:'Apr', MAY:'May', JUN:'Jun',
-                                  JUL:'Jul', AUG:'Aug', SEP:'Sep', OCT:'Oct', NOV:'Nov', DEC:'Dec'};
+                const monthMap = {
+                    JAN: 'Jan', FEB: 'Feb', MAR: 'Mar', APR: 'Apr', MAY: 'May', JUN: 'Jun',
+                    JUL: 'Jul', AUG: 'Aug', SEP: 'Sep', OCT: 'Oct', NOV: 'Nov', DEC: 'Dec'
+                };
                 return `${day} ${monthMap[month] || month} ${strike}${type}`;
             }
             return symbol;
         };
-        
+
         if (data.ce_symbol && ceStrike) {
             ceStrike.textContent = formatSymbol(data.ce_symbol);
         } else if (data.atm_strike && ceStrike) {
             ceStrike.textContent = data.atm_strike; // Fallback
         }
-        
+
         if (data.pe_symbol && peStrike) {
             peStrike.textContent = formatSymbol(data.pe_symbol);
         } else if (data.atm_strike && peStrike) {
@@ -628,6 +630,57 @@ async function updateScalper() {
                 if (data.suggestion.includes('CE')) tradeSuggestion.style.color = 'var(--accent-green)';
                 if (data.suggestion.includes('PE')) tradeSuggestion.style.color = 'var(--accent-red)';
             }
+        }
+
+        // ===================================
+        // Health Checks (V7)
+        // ===================================
+
+        // 1. Latency Monitor
+        const latencyDot = document.getElementById('latency-dot');
+        const latencyText = document.getElementById('latency-text');
+        if (data.latency_ms !== undefined && latencyDot && latencyText) {
+            latencyText.textContent = `${data.latency_ms}ms`;
+            latencyDot.className = 'latency-dot'; // Reset class
+
+            if (data.latency_ms < 500) {
+                latencyDot.classList.add('latency-good');
+                latencyText.style.color = 'var(--accent-green)';
+            } else if (data.latency_ms < 1500) {
+                latencyDot.classList.add('latency-warn');
+                latencyText.style.color = 'var(--accent-yellow)';
+            } else {
+                latencyDot.classList.add('latency-bad');
+                latencyText.style.color = 'var(--accent-red)';
+            }
+        }
+
+        // 2. Velocity Momentum Bar
+        const momentumBar = document.getElementById('momentum-bar');
+        if (data.velocity !== undefined && momentumBar) {
+            // Cap at 10 pts/sec for 100% width
+            const velocity = Math.abs(data.velocity);
+            const width = Math.min((velocity / 10) * 100, 100);
+            momentumBar.style.width = `${width}%`;
+        }
+
+        // 3. PCR Badge (Signal Box)
+        const pcrBadgeSignal = document.getElementById('pcr-badge-signal');
+        const pcrValueSignal = document.getElementById('pcr-value-signal');
+
+        if (data.pcr !== undefined && data.pcr !== null && pcrBadgeSignal && pcrValueSignal) {
+            pcrBadgeSignal.style.display = 'block';
+            pcrValueSignal.textContent = data.pcr.toFixed(2);
+
+            if (data.pcr > 1.0) {
+                pcrValueSignal.style.color = 'var(--accent-green)';
+            } else if (data.pcr < 0.7) {
+                pcrValueSignal.style.color = 'var(--accent-red)';
+            } else {
+                pcrValueSignal.style.color = 'var(--text-muted)';
+            }
+        } else if (pcrBadgeSignal) {
+            pcrBadgeSignal.style.display = 'none';
         }
 
         // Update PCR Badge (New)

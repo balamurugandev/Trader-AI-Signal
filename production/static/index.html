@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>NIFTY 50 Scalping Dashboard</title>
-    <link rel="stylesheet" href="/static/style.css?v=fixed_v7">
+    <link rel="stylesheet" href="/static/style.css?v=fixed_v8">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link
         href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap"
@@ -32,6 +32,11 @@
                 <div class="status-badge" id="status-badge">
                     <span class="status-dot"></span>
                     <span class="status-text" id="market-status">CONNECTING...</span>
+                </div>
+                <!-- Latency Monitor -->
+                <div class="latency-badge" id="latency-badge">
+                    <span class="latency-dot" id="latency-dot"></span>
+                    <span class="latency-text" id="latency-text">0ms</span>
                 </div>
                 <div class="stat-item">
                     <span class="stat-label">Ticks</span>
@@ -88,7 +93,13 @@
                     <div class="scalping-stats">
                         <div class="scalp-stat">
                             <span class="scalp-label">Future Price</span>
-                            <span class="scalp-value" id="future-price">--</span>
+                            <div style="text-align: right;">
+                                <span class="scalp-value" id="future-price">--</span>
+                                <!-- Momentum Speedometer -->
+                                <div class="momentum-container">
+                                    <div class="momentum-bar" id="momentum-bar"></div>
+                                </div>
+                            </div>
                         </div>
                         <div class="scalp-stat">
                             <span class="scalp-label">ATM CE <span class="strike-badge" id="ce-strike"></span></span>
@@ -189,9 +200,11 @@
                             <span class="suggestion-value" id="trade-suggestion">WAIT</span>
                         </div>
 
-                        <!-- PCR Badge -->
-                        <div class="pcr-badge" id="pcr-badge" style="display: none;">
-                            PCR: <span id="pcr-value">--</span>
+                        <!-- PCR Badge (Signal Box) -->
+                        <div class="pcr-badge-container">
+                            <div class="pcr-badge-signal" id="pcr-badge-signal" style="display: none;">
+                                PCR: <span id="pcr-value-signal">--</span>
+                            </div>
                         </div>
                     </div>
 
@@ -221,7 +234,7 @@
         </div>
 
         <script src="/static/market_schedule.js?v=2026"></script>
-        <script src="/static/app.js?v=fixed_v7"></script>
+        <script src="/static/app.js?v=fixed_v8"></script>
 </body>
 
 </html>

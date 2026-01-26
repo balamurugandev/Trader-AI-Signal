@@ -207,6 +207,44 @@ body {
     }
 }
 
+/* Latency Monitor */
+.latency-badge {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    background: var(--bg-secondary);
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    margin-left: auto;
+    /* Push to right if needed */
+    border: 1px solid var(--border-color);
+}
+
+.latency-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--accent-grey);
+}
+
+.latency-good {
+    background: var(--accent-green);
+    box-shadow: 0 0 8px var(--accent-green);
+}
+
+.latency-warn {
+    background: var(--accent-yellow);
+    box-shadow: 0 0 8px var(--accent-yellow);
+}
+
+.latency-bad {
+    background: var(--accent-red);
+    box-shadow: 0 0 8px var(--accent-red);
+    animation: pulse 0.5s infinite;
+}
+
 .stat-item {
     display: flex;
     flex-direction: column;
@@ -557,6 +595,30 @@ body {
     font-size: 1.1rem;
     font-weight: 600;
     color: var(--accent-blue);
+    display: block;
+    /* Ensure block for stacking */
+}
+
+/* Momentum Speedometer */
+.momentum-container {
+    width: 100%;
+    max-width: 120px;
+    height: 4px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 2px;
+    margin-top: 6px;
+    overflow: hidden;
+    margin-left: auto;
+    /* Align right */
+}
+
+.momentum-bar {
+    height: 100%;
+    width: 0%;
+    /* Dynamic */
+    background: linear-gradient(90deg, #663399, #00ff88);
+    /* Purple to Green */
+    transition: width 0.3s ease;
 }
 
 /* Strike Badge for ATM CE/PE */
@@ -647,6 +709,24 @@ body {
 .bias-fill.negative {
     background: var(--accent-red);
     transform: translateX(-100%);
+}
+
+/* PCR Badge in Signal Box */
+.pcr-badge-container {
+    margin-top: 12px;
+    display: flex;
+    justify-content: center;
+}
+
+.pcr-badge-signal {
+    font-family: var(--font-mono);
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    padding: 6px 16px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 12px;
+    border: 1px solid var(--border-color);
 }
 
 .bias-center {
