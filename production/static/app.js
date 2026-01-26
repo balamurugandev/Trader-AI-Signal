@@ -21,6 +21,29 @@ const signalText = document.getElementById('signal-text');
 const signalDesc = document.getElementById('signal-desc');
 const lastUpdate = document.getElementById('last-update');
 
+// Cached Scalping Elements (Performance Optimization)
+const scalpingStatus = document.getElementById('scalping-status');
+const futurePrice = document.getElementById('future-price');
+const cePrice = document.getElementById('ce-price');
+const pePrice = document.getElementById('pe-price');
+const basisValue = document.getElementById('basis-value');
+const biasFill = document.getElementById('bias-fill');
+const straddleValue = document.getElementById('straddle-value');
+const scalpingSignalBox = document.getElementById('scalping-signal-box');
+const scalpSignalIcon = document.getElementById('scalp-signal-icon');
+const scalpSignalText = document.getElementById('scalp-signal-text');
+const scalpSignalDesc = document.getElementById('scalp-signal-desc');
+const ceStrike = document.getElementById('ce-strike');
+const peStrike = document.getElementById('pe-strike');
+const tradeSuggestion = document.getElementById('trade-suggestion');
+const latencyDot = document.getElementById('latency-dot');
+const latencyText = document.getElementById('latency-text');
+const momentumBar = document.getElementById('momentum-bar');
+const pcrBadgeSignal = document.getElementById('pcr-badge-signal');
+const pcrValueSignal = document.getElementById('pcr-value-signal');
+const pcrBadge = document.getElementById('pcr-badge');
+const pcrValueEl = document.getElementById('pcr-value');
+
 // WebSocket connection
 let ws = null;
 let reconnectAttempts = 0;
@@ -290,18 +313,7 @@ function updateSignal(signal, candlesCount) {
 // SCALPING MODULE - JavaScript (NEW)
 // =============================================================================
 
-// Scalping DOM Elements
-const futurePrice = document.getElementById('future-price');
-const cePrice = document.getElementById('ce-price');
-const pePrice = document.getElementById('pe-price');
-const basisValue = document.getElementById('basis-value');
-const biasFill = document.getElementById('bias-fill');
-const straddleValue = document.getElementById('straddle-value');
-const scalpingStatus = document.getElementById('scalping-status');
-const scalpingSignalBox = document.getElementById('scalping-signal-box');
-const scalpSignalIcon = document.getElementById('scalp-signal-icon');
-const scalpSignalText = document.getElementById('scalp-signal-text');
-const scalpSignalDesc = document.getElementById('scalp-signal-desc');
+// Scalping DOM Elements (Defined Globally above)
 
 // Chart.js instance
 let straddleChart = null;
@@ -627,7 +639,6 @@ function updateScalperUI(data) {
     }
 
     // Update Trade Suggestion
-    const tradeSuggestion = document.getElementById('trade-suggestion');
     if (data.suggestion && tradeSuggestion) {
         tradeSuggestion.textContent = data.suggestion;
 
@@ -644,8 +655,6 @@ function updateScalperUI(data) {
     // ===================================
 
     // 1. Latency Monitor
-    const latencyDot = document.getElementById('latency-dot');
-    const latencyText = document.getElementById('latency-text');
     if (data.latency_ms !== undefined && latencyDot && latencyText) {
         latencyText.textContent = `${data.latency_ms}ms`;
         latencyDot.className = 'latency-dot'; // Reset class
@@ -663,7 +672,6 @@ function updateScalperUI(data) {
     }
 
     // 2. Velocity Momentum Bar
-    const momentumBar = document.getElementById('momentum-bar');
     if (data.velocity !== undefined && momentumBar) {
         // Cap at 10 pts/sec for 100% width
         const velocity = Math.abs(data.velocity);
@@ -672,9 +680,6 @@ function updateScalperUI(data) {
     }
 
     // 3. PCR Badge (Signal Box)
-    const pcrBadgeSignal = document.getElementById('pcr-badge-signal');
-    const pcrValueSignal = document.getElementById('pcr-value-signal');
-
     if (data.pcr !== undefined && data.pcr !== null && pcrBadgeSignal && pcrValueSignal) {
         pcrBadgeSignal.style.display = 'block';
         pcrValueSignal.textContent = data.pcr.toFixed(2);
@@ -691,9 +696,6 @@ function updateScalperUI(data) {
     }
 
     // Update PCR Badge (New)
-    const pcrBadge = document.getElementById('pcr-badge');
-    const pcrValueEl = document.getElementById('pcr-value');
-
     if (data.pcr !== undefined && pcrBadge && pcrValueEl) {
         pcrBadge.style.display = 'block';
         pcrValueEl.textContent = data.pcr.toFixed(2);
