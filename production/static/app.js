@@ -175,7 +175,12 @@ function updateTickerTape(tickers) {
         tickerContainer.setAttribute('data-init', 'true');
     } else {
         // UPDATE IN PLACE to preserve scroll and selection
-        const items = Array.from(tickerContainer.children);
+        // Cache children to avoid repeated Array.from() allocations
+        if (!window.cachedTickerItems || window.cachedTickerItems.length !== tickerContainer.children.length) {
+            window.cachedTickerItems = Array.from(tickerContainer.children);
+        }
+        const items = window.cachedTickerItems;
+
         indices.forEach((key, index) => {
             if (index >= items.length) return;
             const data = tickers[key];
@@ -217,6 +222,14 @@ function formatPrice(price) {
 
 function updateTickTable(ticks) {
     if (!ticks || ticks.length === 0 || !tickTableBody) return;
+
+    // Change detection: Only update if tick count or last tick changed
+    const lastTickTime = ticks[ticks.length - 1]?.time;
+    if (window.lastTickTableTime === lastTickTime && window.lastTickTableLength === ticks.length) {
+        return; // No changes, skip update
+    }
+    window.lastTickTableTime = lastTickTime;
+    window.lastTickTableLength = ticks.length;
 
     tickTableBody.innerHTML = ticks.map(tick => {
         const changeClass = tick.change > 0 ? 'change-positive' :
