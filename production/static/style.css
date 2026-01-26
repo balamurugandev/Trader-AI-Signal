@@ -144,12 +144,12 @@ body {
 }
 
 .logo {
-    font-family: var(--font-main);
-    /* Inter - Clean Professional */
-    font-size: 1.2rem;
-    font-weight: 700;
+    font-family: 'Inclusive Sans', sans-serif;
+    /* Distinctive rounded font */
+    font-size: 1.3rem;
+    font-weight: 600;
     color: var(--text-primary);
-    letter-spacing: -0.5px;
+    letter-spacing: 0;
 }
 
 /* Header Date/Time Display */
