@@ -625,13 +625,15 @@ def update_scalping_data():
     
     while True:
         try:
+            # CRITICAL: Record loop start time for precise 1Hz timing
+            loop_start_time = time.time()
+            
             # Check Auth Status dynamically
             if smart_api_global is None:
                 scalping_status = market_status
                 time.sleep(1)
                 continue
-                
-            time.sleep(SCALPING_POLL_INTERVAL)
+            
             
             spot = last_price
             if spot is None:
@@ -691,11 +693,24 @@ def update_scalping_data():
             ce_ltp = ticker_data.get(atm_ce_token, {}).get('ltp') if atm_ce_token else None
             pe_ltp = ticker_data.get(atm_pe_token, {}).get('ltp') if atm_pe_token else None
             
-            # If any data is missing from WS, fetch from API in parallel
+            # SMART API POLLING: Only fetch fresh data every 5 seconds
+            # Use cached/forward-filled data in between for 1Hz updates
+            # This prevents 3-4 second delays when API is slow (holidays/rate limits)
+            should_fetch_fresh_data = False
+            if 'last_api_fetch_time' not in globals():
+                last_api_fetch_time = 0
+            
+            time_since_last_fetch = loop_start_time - last_api_fetch_time
+            if time_since_last_fetch >= 5.0:  # Fetch every 5 seconds
+                should_fetch_fresh_data = True
+                last_api_fetch_time = loop_start_time
+            
+            # If any data is missing from WS and it's time to fetch, get from API in parallel
             missing_tokens = []
-            if not fut_ltp and future_token: missing_tokens.append(('fut', future_symbol, future_token))
-            if not ce_ltp and atm_ce_token: missing_tokens.append(('ce', ce_symbol, atm_ce_token))
-            if not pe_ltp and atm_pe_token: missing_tokens.append(('pe', pe_symbol, atm_pe_token))
+            if should_fetch_fresh_data:
+                if not fut_ltp and future_token: missing_tokens.append(('fut', future_symbol, future_token))
+                if not ce_ltp and atm_ce_token: missing_tokens.append(('ce', ce_symbol, atm_ce_token))
+                if not pe_ltp and atm_pe_token: missing_tokens.append(('pe', pe_symbol, atm_pe_token))
             
             if missing_tokens:
                 with ThreadPoolExecutor(max_workers=5) as executor:
@@ -704,9 +719,21 @@ def update_scalping_data():
                         for item in missing_tokens
                     }
                     
-                    if 'fut' in futures_map: fut_ltp = futures_map['fut'].result()
-                    if 'ce' in futures_map: ce_ltp = futures_map['ce'].result()
-                    if 'pe' in futures_map: pe_ltp = futures_map['pe'].result()
+                    if 'fut' in futures_map: 
+                        result = futures_map['fut'].result()
+                        if result: 
+                            fut_ltp = result
+                            last_future_price = result
+                    if 'ce' in futures_map: 
+                        result = futures_map['ce'].result()
+                        if result:
+                            ce_ltp = result
+                            last_ce_price = result
+                    if 'pe' in futures_map:
+                        result = futures_map['pe'].result()
+                        if result:
+                            pe_ltp = result
+                            last_pe_price = result
             
             # Update RTT Latency (Stable Metric)
             fetch_end_time = time.time()
@@ -896,7 +923,11 @@ def update_scalping_data():
             scalping_status = f"Error: {str(e)[:20]}"
             print(f"❌ Scalping loop error: {e}")
             
-        time.sleep(SCALPING_POLL_INTERVAL)  # Exact poll interval (0.5s)
+        # PRECISE 1Hz TIMING: Compensate for variable API/processing time
+        # Target: Exactly 1 second between loop starts
+        elapsed = time.time() - loop_start_time
+        sleep_time = max(0.1, 1.0 - elapsed)  # Minimum 0.1s, target 1.0s interval
+        time.sleep(sleep_time)
 
 
 # =============================================================================
