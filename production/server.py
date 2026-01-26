@@ -867,8 +867,9 @@ def update_scalping_data():
                 
                 # Determine status
                 # Keep LIVE if we have current OR cached data (Safe check for None)
-                has_cached_data = ((last_future_price or 0) > 0) or ((last_ce_price or 0) > 0)
-                if fut_ltp or ce_ltp or has_cached_data:
+                # Check straddle price since that's what's displayed in the chart
+                has_cached_data = ((last_future_price or 0) > 0) or ((last_ce_price or 0) > 0) or ((last_straddle_price or 0) > 0)
+                if fut_ltp or ce_ltp or pe_ltp or has_cached_data:
                     scalping_status = "LIVE"
                 elif future_token or atm_ce_token or atm_pe_token:
                     scalping_status = "Tokens found, awaiting data..."
