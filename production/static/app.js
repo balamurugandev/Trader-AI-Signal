@@ -21,30 +21,41 @@ const signalText = document.getElementById('signal-text');
 const signalDesc = document.getElementById('signal-desc');
 const lastUpdate = document.getElementById('last-update');
 
-// Cached Scalping Elements (Performance Optimization)
-const scalpingStatus = document.getElementById('scalping-status');
-const futurePrice = document.getElementById('future-price');
-const cePrice = document.getElementById('ce-price');
-const pePrice = document.getElementById('pe-price');
-const basisValue = document.getElementById('basis-value');
-const biasFill = document.getElementById('bias-fill');
-const straddleValue = document.getElementById('straddle-value');
-const scalpingSignalBox = document.getElementById('scalping-signal-box');
-const scalpSignalIcon = document.getElementById('scalp-signal-icon');
-const scalpSignalText = document.getElementById('scalp-signal-text');
-const scalpSignalDesc = document.getElementById('scalp-signal-desc');
-const ceStrike = document.getElementById('ce-strike');
-const peStrike = document.getElementById('pe-strike');
-const tradeSuggestion = document.getElementById('trade-suggestion');
-const latencyDot = document.getElementById('latency-dot');
-const latencyText = document.getElementById('latency-text');
-const momentumBar = document.getElementById('momentum-bar');
-const pcrBadgeSignal = document.getElementById('pcr-badge-signal');
-const pcrValueSignal = document.getElementById('pcr-value-signal');
-const pcrBadge = document.getElementById('pcr-badge');
-const pcrValueEl = document.getElementById('pcr-value');
+// Cached Scalping Elements
+let scalpingStatus, futurePrice, cePrice, pePrice, basisValue, biasFill, straddleValue;
+let scalpingSignalBox, scalpSignalIcon, scalpSignalText, scalpSignalDesc;
+let ceStrike, peStrike, tradeSuggestion, latencyDot, latencyText, momentumBar;
+let pcrBadgeSignal, pcrValueSignal, pcrBadge, pcrValueEl;
 
-// WebSocket connection
+document.addEventListener('DOMContentLoaded', () => {
+    // Initialize Cache
+    scalpingStatus = document.getElementById('scalping-status');
+    futurePrice = document.getElementById('future-price');
+    cePrice = document.getElementById('ce-price');
+    pePrice = document.getElementById('pe-price');
+    basisValue = document.getElementById('basis-value');
+    biasFill = document.getElementById('bias-fill');
+    straddleValue = document.getElementById('straddle-value');
+    scalpingSignalBox = document.getElementById('scalping-signal-box');
+    scalpSignalIcon = document.getElementById('scalp-signal-icon');
+    scalpSignalText = document.getElementById('scalp-signal-text');
+    scalpSignalDesc = document.getElementById('scalp-signal-desc');
+    ceStrike = document.getElementById('ce-strike');
+    peStrike = document.getElementById('pe-strike');
+    tradeSuggestion = document.getElementById('trade-suggestion');
+    latencyDot = document.getElementById('latency-dot');
+    latencyText = document.getElementById('latency-text');
+    momentumBar = document.getElementById('momentum-bar');
+    pcrBadgeSignal = document.getElementById('pcr-badge-signal');
+    pcrValueSignal = document.getElementById('pcr-value-signal');
+    pcrBadge = document.getElementById('pcr-badge');
+    pcrValueEl = document.getElementById('pcr-value');
+
+    // Connect WS
+    connectWebSocket();
+});
+
+// WebSocket connection (rest of file uses these let variables)
 let ws = null;
 let reconnectAttempts = 0;
 const MAX_RECONNECT_ATTEMPTS = 10;
@@ -424,10 +435,10 @@ function initStraddleChart() {
                 label: 'Straddle Price',
                 data: [],
                 borderColor: '#ffaa00',
-                backgroundColor: 'rgba(255, 170, 0, 0.1)',
+                backgroundColor: 'rgba(255, 170, 0, 0.05)',
                 borderWidth: 2,
                 fill: true,
-                tension: 0.3,
+                tension: 0.4,
                 pointRadius: 0,
                 pointHoverRadius: 4
             }]
@@ -552,14 +563,14 @@ function updateScalperUI(data) {
         // TREND-BASED LINE COLOR
         const trend = data.trend || 'FLAT';
         let lineColor = '#ffaa00'; // Default: Amber
-        let fillColor = 'rgba(255, 170, 0, 0.1)';
+        let fillColor = 'rgba(255, 170, 0, 0.05)';
 
         if (trend === 'RISING') {
             lineColor = '#00E396';  // Bright Green - Momentum
-            fillColor = 'rgba(0, 227, 150, 0.15)';
+            fillColor = 'rgba(0, 227, 150, 0.1)';
         } else if (trend === 'FALLING') {
             lineColor = '#FF4560';  // Orange-Red - Decay
-            fillColor = 'rgba(255, 69, 96, 0.15)';
+            fillColor = 'rgba(255, 69, 96, 0.1)';
         }
 
         straddleChart.data.datasets[0].borderColor = lineColor;
@@ -756,6 +767,29 @@ function updateDateTime() {
 
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
+    // 1. Initialize DOM Cache (Global Performance Optimization)
+    scalpingStatus = document.getElementById('scalping-status');
+    futurePrice = document.getElementById('future-price');
+    cePrice = document.getElementById('ce-price');
+    pePrice = document.getElementById('pe-price');
+    basisValue = document.getElementById('basis-value');
+    biasFill = document.getElementById('bias-fill');
+    straddleValue = document.getElementById('straddle-value');
+    scalpingSignalBox = document.getElementById('scalping-signal-box');
+    scalpSignalIcon = document.getElementById('scalp-signal-icon');
+    scalpSignalText = document.getElementById('scalp-signal-text');
+    scalpSignalDesc = document.getElementById('scalp-signal-desc');
+    ceStrike = document.getElementById('ce-strike');
+    peStrike = document.getElementById('pe-strike');
+    tradeSuggestion = document.getElementById('trade-suggestion');
+    latencyDot = document.getElementById('latency-dot');
+    latencyText = document.getElementById('latency-text');
+    momentumBar = document.getElementById('momentum-bar');
+    pcrBadgeSignal = document.getElementById('pcr-badge-signal');
+    pcrValueSignal = document.getElementById('pcr-value-signal');
+    pcrBadge = document.getElementById('pcr-badge');
+    pcrValueEl = document.getElementById('pcr-value');
+
     connectWebSocket();
     initStraddleChart();
 

@@ -859,7 +859,8 @@ def update_scalping_data():
                      trade_suggestion = "⚪ SIDEWAYS - Scalping Zone"
                 
                 # Determine status
-                if fut_ltp or ce_ltp or pe_ltp:
+                # Keep LIVE if we have current OR cached data
+                if (fut_ltp or last_future_price > 0) or (ce_ltp or last_ce_price > 0):
                     scalping_status = "LIVE"
                 elif future_token or atm_ce_token or atm_pe_token:
                     scalping_status = "Tokens found, awaiting data..."
