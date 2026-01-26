@@ -793,27 +793,34 @@ def update_scalping_data():
                 # ============================================================
                 # STRADDLE PRICE & TREND DETECTION
                 # ============================================================
+                # Calculate Straddle Price (Synthetic Future)
+                # Forward Fill Logic: If data missing, use last known to prevent Graph Lag
+                straddle_price = None
+                straddle_sma3 = None
+                straddle_trend = "FLAT"
+
                 if ce_ltp and pe_ltp:
-                    straddle_price = round((ce_ltp + pe_ltp) / 2, 2)
-                    last_straddle_prices.append(straddle_price)
-                    
-                    # Calculate 3-period SMA of Straddle
+                    straddle_price = round(ce_ltp + pe_ltp, 2) # Changed to sum, not average
+                    last_straddle_price = straddle_price
+                elif last_straddle_price is not None:
+                    straddle_price = last_straddle_price
+                
+                # Update moving averages
+                if straddle_price is not None:
+                    last_straddle_prices.append(straddle_price) # Append to deque for SMA calculation
                     if len(last_straddle_prices) >= 3:
-                        recent_3 = list(last_straddle_prices)[-3:]
-                        straddle_sma3 = round(sum(recent_3) / 3, 2)
-                        
-                        # Trend Detection: Current vs SMA
-                        if straddle_price > straddle_sma3:
-                            straddle_trend = "RISING"  # Gamma/Momentum
-                        elif straddle_price < straddle_sma3:
-                            straddle_trend = "FALLING"  # Decay
-                        else:
-                            straddle_trend = "FLAT"
+                        straddle_sma3 = round(sum(list(last_straddle_prices)[-3:]) / 3, 2)
+                
+                # Determine Trend
+                if straddle_sma3 is not None and straddle_price is not None:
+                    if straddle_price > straddle_sma3:
+                        straddle_trend = "RISING"
+                    elif straddle_price < straddle_sma3:
+                        straddle_trend = "FALLING"
                     else:
-                        straddle_sma3 = None
                         straddle_trend = "FLAT"
                 else:
-                    straddle_price = None
+                    straddle_sma3 = None
                     straddle_trend = "FLAT"
                 
                 # ============================================================
