@@ -33,14 +33,14 @@
     --text-muted: #94a3b8;
     /* Slate-400 */
 
-    --accent-green: #22c55e;
     --accent-red: #ef4444;
     --accent-blue: #38bdf8;
     --accent-yellow: #f59e0b;
     --accent-grey: #64748b;
 
-    --glow-green: 0 0 20px rgba(34, 197, 94, 0.2);
-    --glow-red: 0 0 20px rgba(239, 68, 68, 0.2);
+    /* Removed Glow Effects for Professional Matte Look */
+    --glow-green: none;
+    --glow-red: none;
 
     /* Typography */
     --font-main: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
