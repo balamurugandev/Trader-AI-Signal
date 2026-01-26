@@ -542,27 +542,34 @@ function updateScalperUI(data) {
     // DYNAMIC SCALING & TREND-COLORED CHART
     // ================================================================
     if (straddleChart && data.history && data.history.length > 0) {
-        // Fix: Filter history FIRST to ensure 1:1 mapping of Labels vs Data
-        // This prevents the "Graph stuck in middle" issue where labels > data
-        const validHistory = data.history.filter(h => h.straddle !== null && h.straddle > 0);
+        // CRITICAL FIX: Only update chart when history actually changes
+        // This prevents 300+ array allocations/min that cause slowdown after 10 mins
+        const currentHistoryLength = data.history.length;
+        if (!window.lastChartHistoryLength || window.lastChartHistoryLength !== currentHistoryLength) {
+            window.lastChartHistoryLength = currentHistoryLength;
 
-        // Slice last 40 points for "Ultra Fast" zoom (approx 40 seconds)
-        const recentHistory = validHistory.slice(-40);
+            // Fix: Filter history FIRST to ensure 1:1 mapping of Labels vs Data
+            // This prevents the "Graph stuck in middle" issue where labels > data
+            const validHistory = data.history.filter(h => h.straddle !== null && h.straddle > 0);
 
-        straddleChart.data.labels = recentHistory.map(h => h.time);
-        straddleChart.data.datasets[0].data = recentHistory.map(h => h.straddle);
+            // Slice last 40 points for "Ultra Fast" zoom (approx 40 seconds)
+            const recentHistory = validHistory.slice(-40);
 
-        // DYNAMIC Y-AXIS SCALING (Heartbeat View)
-        // Calculate min/max with ±2 padding for tight zoom
-        const displayValues = straddleChart.data.datasets[0].data;
-        if (displayValues.length > 0) {
-            const minVal = Math.min(...displayValues);
-            const maxVal = Math.max(...displayValues);
-            straddleChart.options.scales.y.suggestedMin = minVal - 2;
-            straddleChart.options.scales.y.suggestedMax = maxVal + 2;
+            straddleChart.data.labels = recentHistory.map(h => h.time);
+            straddleChart.data.datasets[0].data = recentHistory.map(h => h.straddle);
+
+            // DYNAMIC Y-AXIS SCALING (Heartbeat View)
+            // Calculate min/max with ±2 padding for tight zoom
+            const displayValues = straddleChart.data.datasets[0].data;
+            if (displayValues.length > 0) {
+                const minVal = Math.min(...displayValues);
+                const maxVal = Math.max(...displayValues);
+                straddleChart.options.scales.y.suggestedMin = minVal - 2;
+                straddleChart.options.scales.y.suggestedMax = maxVal + 2;
+            }
         }
 
-        // TREND-BASED LINE COLOR
+        // TREND-BASED LINE COLOR (Always update for real-time color changes)
         const trend = data.trend || 'FLAT';
         let lineColor = '#ffaa00'; // Default: Amber
         let fillColor = 'rgba(255, 170, 0, 0.05)';
