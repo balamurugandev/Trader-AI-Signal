@@ -356,6 +356,7 @@ def get_option_tokens(smart_api, spot_price: float) -> dict:
     """
     global scalping_status
     from datetime import datetime
+    from concurrent.futures import ThreadPoolExecutor # For parallel API calls
     
     try:
         scalping_status = "Fetching instrument tokens..."
@@ -670,10 +671,17 @@ def update_scalping_data():
             else:
                 current_atm = current_atm_strike
             
-            # Fetch LTPs using proper trading symbols
-            fut_ltp = fetch_ltp(smart_api_global, "NFO", future_symbol, future_token) if future_token else None
-            ce_ltp = fetch_ltp(smart_api_global, "NFO", ce_symbol, atm_ce_token) if atm_ce_token else None
-            pe_ltp = fetch_ltp(smart_api_global, "NFO", pe_symbol, atm_pe_token) if atm_pe_token else None
+            # Fetch LTPs in PARALLEL to reduce latency (Fix for stable ping)
+            # Sequential: 300ms + 300ms + 300ms = 900ms lag
+            # Parallel: max(300, 300, 300) = ~300ms lag
+            with ThreadPoolExecutor(max_workers=3) as executor:
+                future_fut = executor.submit(fetch_ltp, smart_api_global, "NFO", future_symbol, future_token) if future_token else None
+                future_ce = executor.submit(fetch_ltp, smart_api_global, "NFO", ce_symbol, atm_ce_token) if atm_ce_token else None
+                future_pe = executor.submit(fetch_ltp, smart_api_global, "NFO", pe_symbol, atm_pe_token) if atm_pe_token else None
+                
+                fut_ltp = future_fut.result() if future_fut else None
+                ce_ltp = future_ce.result() if future_ce else None
+                pe_ltp = future_pe.result() if future_pe else None
             
             poll_count += 1
             if poll_count % 10 == 1:  # Log every 10th poll
