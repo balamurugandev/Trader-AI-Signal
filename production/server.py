@@ -886,7 +886,7 @@ def update_scalping_data():
             scalping_status = f"Error: {str(e)[:20]}"
             print(f"❌ Scalping loop error: {e}")
             
-        time.sleep(SCALPING_POLL_INTERVAL + 1)  # 2 second poll to avoid rate limits
+        time.sleep(SCALPING_POLL_INTERVAL)  # Exact poll interval (0.5s)
 
 
 # =============================================================================
@@ -1134,8 +1134,25 @@ async def websocket_endpoint(websocket: WebSocket):
                 # Fallbacks strictly for 'nifty' if not yet populated
                 nifty_data = ticker_data.get("nifty", {"price": 0.0, "change": 0.0, "p_change": 0.0})
                 
-                # Add scalping/candle context to Nifty data if needed or keep separate
-                
+                with scalping_lock:
+                    full_scalping_data = {
+                        "status": scalping_status,
+                        "future_price": last_future_price,
+                        "ce_price": last_ce_price,
+                        "pe_price": last_pe_price,
+                        "straddle_price": straddle_price,
+                        "basis": round(last_basis, 2) if last_basis else 0.0,
+                        "real_basis": round(real_basis, 2) if real_basis else 0.0,
+                        "sentiment": sentiment,
+                        "trend": straddle_trend,
+                        "pcr": pcr_value,
+                        "signal": scalping_signal if 'scalping_signal' in locals() else "WAIT", # Use local var
+                        "suggestion": trade_suggestion if 'trade_suggestion' in locals() else "Initializing...",
+                        "latency_ms": int(current_latency_ms),
+                        "velocity": points_per_sec, 
+                        "history": list(scalping_history)[-50:]
+                    }
+
                 data = {
                     "market_status": market_status,
                     "total_ticks": total_ticks,
@@ -1145,10 +1162,12 @@ async def websocket_endpoint(websocket: WebSocket):
                     "ema": round(last_ema, 2) if last_ema else None,
                     "signal": current_signal,
                     "signal_color": signal_color,
+                    # SCALPING DATA (Sync with Indices)
+                    "scalping": full_scalping_data,
+                    
                     "tick_history": list(tick_history)[-10:],
                     
                     # REAL TIME TICKERS
-                    # We iterate through our target keys and fill from ticker_data
                     "tickers": {
                         k: ticker_data.get(k, {"price": 0.0, "change": 0.0, "p_change": 0.0}) 
                         for k in ["nifty", "sensex", "banknifty", "midcpnifty", "niftysmallcap", "indiavix"]

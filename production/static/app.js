@@ -449,7 +449,7 @@ function initStraddleChart() {
                 x: {
                     display: true,
                     grid: { color: 'rgba(255, 255, 255, 0.05)' },
-                    ticks: { color: '#606070', maxTicksLimit: 6 }
+                    ticks: { color: '#606070', maxTicksLimit: 12 }
                 },
                 y: {
                     display: true,
@@ -465,244 +465,250 @@ async function updateScalper() {
     try {
         const response = await fetch('/api/scalper-data');
         if (!response.ok) return;
-
         const data = await response.json();
-
-        // Update status
-        if (scalpingStatus) {
-            scalpingStatus.textContent = data.status;
-            scalpingStatus.classList.toggle('live', data.status === 'LIVE');
-        }
-
-        // Update prices
-        if (futurePrice && data.future_price !== null) {
-            futurePrice.textContent = `₹${formatPrice(data.future_price)}`;
-        }
-        if (cePrice && data.ce_price !== null) {
-            cePrice.textContent = `₹${formatPrice(data.ce_price)}`;
-        }
-        if (pePrice && data.pe_price !== null) {
-            pePrice.textContent = `₹${formatPrice(data.pe_price)}`;
-        }
-
-        // Update Real Basis (Synthetic) with gauge and sentiment
-        const displayBasis = data.real_basis !== null ? data.real_basis : data.basis;
-        if (basisValue && displayBasis !== null) {
-            basisValue.textContent = (displayBasis >= 0 ? '+' : '') + displayBasis.toFixed(2);
-            basisValue.classList.remove('positive', 'negative');
-            basisValue.classList.add(displayBasis >= 0 ? 'positive' : 'negative');
-
-            // Update bias fill gauge (-50 to +50 range mapped to 0-50% width)
-            if (biasFill) {
-                const normalizedBasis = Math.min(Math.max(displayBasis, -50), 50);
-                const fillWidth = Math.abs(normalizedBasis) + '%';
-                biasFill.style.width = fillWidth;
-                biasFill.classList.remove('positive', 'negative');
-                biasFill.classList.add(displayBasis >= 0 ? 'positive' : 'negative');
-            }
-        }
-
-        // Update Straddle value with SMA indicator
-        if (straddleValue && data.straddle_price !== null) {
-            const smaIndicator = data.sma3 ? ` (SMA: ${data.sma3.toFixed(2)})` : '';
-            straddleValue.textContent = `₹${formatPrice(data.straddle_price)}`;
-        }
-
-        // ================================================================
-        // DYNAMIC SCALING & TREND-COLORED CHART
-        // ================================================================
-        if (straddleChart && data.history && data.history.length > 0) {
-            const labels = data.history.map(h => h.time);
-            const values = data.history.map(h => h.straddle).filter(v => v !== null);
-
-            const displayLabels = labels.slice(-30);
-            const displayValues = values.slice(-30);
-
-            straddleChart.data.labels = displayLabels;
-            straddleChart.data.datasets[0].data = displayValues;
-
-            // DYNAMIC Y-AXIS SCALING (Heartbeat View)
-            // Calculate min/max with ±2 padding for tight zoom
-            if (displayValues.length > 0) {
-                const minVal = Math.min(...displayValues);
-                const maxVal = Math.max(...displayValues);
-                straddleChart.options.scales.y.suggestedMin = minVal - 2;
-                straddleChart.options.scales.y.suggestedMax = maxVal + 2;
-            }
-
-            // TREND-BASED LINE COLOR
-            const trend = data.trend || 'FLAT';
-            let lineColor = '#ffaa00'; // Default: Amber
-            let fillColor = 'rgba(255, 170, 0, 0.1)';
-
-            if (trend === 'RISING') {
-                lineColor = '#00E396';  // Bright Green - Momentum
-                fillColor = 'rgba(0, 227, 150, 0.15)';
-            } else if (trend === 'FALLING') {
-                lineColor = '#FF4560';  // Orange-Red - Decay
-                fillColor = 'rgba(255, 69, 96, 0.15)';
-            }
-
-            straddleChart.data.datasets[0].borderColor = lineColor;
-            straddleChart.data.datasets[0].backgroundColor = fillColor;
-
-            straddleChart.update('none');
-        }
-
-        // ================================================================
-        // SCALPING SIGNAL BOX (Professional Edition)
-        // ================================================================
-        if (scalpingSignalBox) {
-            scalpingSignalBox.classList.remove('wait', 'buy-call', 'buy-put');
-
-            const sentiment = data.sentiment || 'NEUTRAL';
-            const trend = data.trend || 'FLAT';
-
-            if (data.signal === 'BUY CALL') {
-                scalpingSignalBox.classList.add('buy-call');
-                scalpSignalIcon.textContent = '🟢';
-                scalpSignalText.textContent = 'BUY CALL';
-                scalpSignalDesc.textContent = `${sentiment} + ${trend} Straddle → CALL Entry`;
-            } else if (data.signal === 'BUY PUT') {
-                scalpingSignalBox.classList.add('buy-put');
-                scalpSignalIcon.textContent = '🔴';
-                scalpSignalText.textContent = 'BUY PUT';
-                scalpSignalDesc.textContent = `${sentiment} + ${trend} Straddle → PUT Entry`;
-            } else if (data.signal === 'TRAP') {
-                scalpingSignalBox.classList.add('trap');
-                scalpSignalIcon.textContent = '⚠️';
-                scalpSignalText.textContent = 'TRAP';
-                scalpSignalDesc.textContent = `OI Trap Detected: ${sentiment} but High PCR Reversal Risk!`;
-            } else {
-                scalpingSignalBox.classList.add('wait');
-                scalpSignalIcon.textContent = '⚪';
-                scalpSignalText.textContent = 'WAIT';
-
-                // More helpful wait message
-                if (trend === 'FALLING') {
-                    scalpSignalDesc.textContent = '📉 Straddle Decay - Do Not Enter';
-                } else {
-                    scalpSignalDesc.textContent = `${sentiment} | Waiting for trend...`;
-                }
-            }
-        }
-
-        // Update ATM Strike badges with full symbol names
-        const ceStrike = document.getElementById('ce-strike');
-        const peStrike = document.getElementById('pe-strike');
-
-        // Format symbol: "NIFTY27JAN2525050CE" -> "27 Jan 25050CE"
-        const formatSymbol = (symbol) => {
-            if (!symbol || symbol.length < 10) return symbol;
-            // Extract date and strike from symbol like "NIFTY27JAN2525050CE"
-            const match = symbol.match(/NIFTY(\d{2})([A-Z]{3})(\d{2})(\d+)(CE|PE)/);
-            if (match) {
-                const [, day, month, year, strike, type] = match;
-                const monthMap = {
-                    JAN: 'Jan', FEB: 'Feb', MAR: 'Mar', APR: 'Apr', MAY: 'May', JUN: 'Jun',
-                    JUL: 'Jul', AUG: 'Aug', SEP: 'Sep', OCT: 'Oct', NOV: 'Nov', DEC: 'Dec'
-                };
-                return `${day} ${monthMap[month] || month} ${strike}${type}`;
-            }
-            return symbol;
-        };
-
-        if (data.ce_symbol && ceStrike) {
-            ceStrike.textContent = formatSymbol(data.ce_symbol);
-        } else if (data.atm_strike && ceStrike) {
-            ceStrike.textContent = data.atm_strike; // Fallback
-        }
-
-        if (data.pe_symbol && peStrike) {
-            peStrike.textContent = formatSymbol(data.pe_symbol);
-        } else if (data.atm_strike && peStrike) {
-            peStrike.textContent = data.atm_strike; // Fallback
-        }
-
-        // Update Trade Suggestion
-        const tradeSuggestion = document.getElementById('trade-suggestion');
-        if (data.suggestion && tradeSuggestion) {
-            tradeSuggestion.textContent = data.suggestion;
-
-            // Dynamic coloring
-            tradeSuggestion.style.color = 'var(--text-primary)'; // Default
-            if (data.suggestion.includes('BUY')) {
-                if (data.suggestion.includes('CE')) tradeSuggestion.style.color = 'var(--accent-green)';
-                if (data.suggestion.includes('PE')) tradeSuggestion.style.color = 'var(--accent-red)';
-            }
-        }
-
-        // ===================================
-        // Health Checks (V7)
-        // ===================================
-
-        // 1. Latency Monitor
-        const latencyDot = document.getElementById('latency-dot');
-        const latencyText = document.getElementById('latency-text');
-        if (data.latency_ms !== undefined && latencyDot && latencyText) {
-            latencyText.textContent = `${data.latency_ms}ms`;
-            latencyDot.className = 'latency-dot'; // Reset class
-
-            if (data.latency_ms < 500) {
-                latencyDot.classList.add('latency-good');
-                latencyText.style.color = 'var(--accent-green)';
-            } else if (data.latency_ms < 1500) {
-                latencyDot.classList.add('latency-warn');
-                latencyText.style.color = 'var(--accent-yellow)';
-            } else {
-                latencyDot.classList.add('latency-bad');
-                latencyText.style.color = 'var(--accent-red)';
-            }
-        }
-
-        // 2. Velocity Momentum Bar
-        const momentumBar = document.getElementById('momentum-bar');
-        if (data.velocity !== undefined && momentumBar) {
-            // Cap at 10 pts/sec for 100% width
-            const velocity = Math.abs(data.velocity);
-            const width = Math.min((velocity / 10) * 100, 100);
-            momentumBar.style.width = `${width}%`;
-        }
-
-        // 3. PCR Badge (Signal Box)
-        const pcrBadgeSignal = document.getElementById('pcr-badge-signal');
-        const pcrValueSignal = document.getElementById('pcr-value-signal');
-
-        if (data.pcr !== undefined && data.pcr !== null && pcrBadgeSignal && pcrValueSignal) {
-            pcrBadgeSignal.style.display = 'block';
-            pcrValueSignal.textContent = data.pcr.toFixed(2);
-
-            if (data.pcr > 1.0) {
-                pcrValueSignal.style.color = 'var(--accent-green)';
-            } else if (data.pcr < 0.7) {
-                pcrValueSignal.style.color = 'var(--accent-red)';
-            } else {
-                pcrValueSignal.style.color = 'var(--text-muted)';
-            }
-        } else if (pcrBadgeSignal) {
-            pcrBadgeSignal.style.display = 'none';
-        }
-
-        // Update PCR Badge (New)
-        const pcrBadge = document.getElementById('pcr-badge');
-        const pcrValueEl = document.getElementById('pcr-value');
-
-        if (data.pcr !== undefined && pcrBadge && pcrValueEl) {
-            pcrBadge.style.display = 'block';
-            pcrValueEl.textContent = data.pcr.toFixed(2);
-
-            pcrBadge.classList.remove('bullish', 'bearish');
-            if (data.pcr > 1.0) {
-                pcrBadge.classList.add('bullish');
-            } else if (data.pcr < 0.7) {
-                pcrBadge.classList.add('bearish');
-            }
-        }
-
+        updateScalperUI(data);
     } catch (error) {
         console.error('Scalper update error:', error);
     }
 }
+
+function updateScalperUI(data) {
+    if (!data) return;
+
+    // Update status
+    if (scalpingStatus) {
+        scalpingStatus.textContent = data.status;
+        scalpingStatus.classList.toggle('live', data.status === 'LIVE');
+    }
+
+    // Update prices
+    if (futurePrice && data.future_price !== null) {
+        futurePrice.textContent = `₹${formatPrice(data.future_price)}`;
+    }
+    if (cePrice && data.ce_price !== null) {
+        cePrice.textContent = `₹${formatPrice(data.ce_price)}`;
+    }
+    if (pePrice && data.pe_price !== null) {
+        pePrice.textContent = `₹${formatPrice(data.pe_price)}`;
+    }
+
+    // Update Real Basis (Synthetic) with gauge and sentiment
+    const displayBasis = data.real_basis !== null ? data.real_basis : data.basis;
+    if (basisValue && displayBasis !== null) {
+        basisValue.textContent = (displayBasis >= 0 ? '+' : '') + displayBasis.toFixed(2);
+        basisValue.classList.remove('positive', 'negative');
+        basisValue.classList.add(displayBasis >= 0 ? 'positive' : 'negative');
+
+        // Update bias fill gauge (-50 to +50 range mapped to 0-50% width)
+        if (biasFill) {
+            const normalizedBasis = Math.min(Math.max(displayBasis, -50), 50);
+            const fillWidth = Math.abs(normalizedBasis) + '%';
+            biasFill.style.width = fillWidth;
+            biasFill.classList.remove('positive', 'negative');
+            biasFill.classList.add(displayBasis >= 0 ? 'positive' : 'negative');
+        }
+    }
+
+    // Update Straddle value with SMA indicator
+    if (straddleValue && data.straddle_price !== null) {
+        const smaIndicator = data.sma3 ? ` (SMA: ${data.sma3.toFixed(2)})` : '';
+        straddleValue.textContent = `₹${formatPrice(data.straddle_price)}`;
+    }
+
+    // ================================================================
+    // DYNAMIC SCALING & TREND-COLORED CHART
+    // ================================================================
+    if (straddleChart && data.history && data.history.length > 0) {
+        const labels = data.history.map(h => h.time);
+        const values = data.history.map(h => h.straddle).filter(v => v !== null);
+
+        const displayLabels = labels.slice(-30);
+        const displayValues = values.slice(-30);
+
+        straddleChart.data.labels = displayLabels;
+        straddleChart.data.datasets[0].data = displayValues;
+
+        // DYNAMIC Y-AXIS SCALING (Heartbeat View)
+        // Calculate min/max with ±2 padding for tight zoom
+        if (displayValues.length > 0) {
+            const minVal = Math.min(...displayValues);
+            const maxVal = Math.max(...displayValues);
+            straddleChart.options.scales.y.suggestedMin = minVal - 2;
+            straddleChart.options.scales.y.suggestedMax = maxVal + 2;
+        }
+
+        // TREND-BASED LINE COLOR
+        const trend = data.trend || 'FLAT';
+        let lineColor = '#ffaa00'; // Default: Amber
+        let fillColor = 'rgba(255, 170, 0, 0.1)';
+
+        if (trend === 'RISING') {
+            lineColor = '#00E396';  // Bright Green - Momentum
+            fillColor = 'rgba(0, 227, 150, 0.15)';
+        } else if (trend === 'FALLING') {
+            lineColor = '#FF4560';  // Orange-Red - Decay
+            fillColor = 'rgba(255, 69, 96, 0.15)';
+        }
+
+        straddleChart.data.datasets[0].borderColor = lineColor;
+        straddleChart.data.datasets[0].backgroundColor = fillColor;
+
+        straddleChart.update('none');
+    }
+
+    // ================================================================
+    // SCALPING SIGNAL BOX (Professional Edition)
+    // ================================================================
+    if (scalpingSignalBox) {
+        scalpingSignalBox.classList.remove('wait', 'buy-call', 'buy-put');
+
+        const sentiment = data.sentiment || 'NEUTRAL';
+        const trend = data.trend || 'FLAT';
+
+        if (data.signal === 'BUY CALL') {
+            scalpingSignalBox.classList.add('buy-call');
+            scalpSignalIcon.textContent = '🟢';
+            scalpSignalText.textContent = 'BUY CALL';
+            scalpSignalDesc.textContent = `${sentiment} + ${trend} Straddle → CALL Entry`;
+        } else if (data.signal === 'BUY PUT') {
+            scalpingSignalBox.classList.add('buy-put');
+            scalpSignalIcon.textContent = '🔴';
+            scalpSignalText.textContent = 'BUY PUT';
+            scalpSignalDesc.textContent = `${sentiment} + ${trend} Straddle → PUT Entry`;
+        } else if (data.signal === 'TRAP') {
+            scalpingSignalBox.classList.add('trap');
+            scalpSignalIcon.textContent = '⚠️';
+            scalpSignalText.textContent = 'TRAP';
+            scalpSignalDesc.textContent = `OI Trap Detected: ${sentiment} but High PCR Reversal Risk!`;
+        } else {
+            scalpingSignalBox.classList.add('wait');
+            scalpSignalIcon.textContent = '⚪';
+            scalpSignalText.textContent = 'WAIT';
+
+            // More helpful wait message
+            if (trend === 'FALLING') {
+                scalpSignalDesc.textContent = '📉 Straddle Decay - Do Not Enter';
+            } else {
+                scalpSignalDesc.textContent = `${sentiment} | Waiting for trend...`;
+            }
+        }
+    }
+
+    // Update ATM Strike badges with full symbol names
+    const ceStrike = document.getElementById('ce-strike');
+    const peStrike = document.getElementById('pe-strike');
+
+    // Format symbol: "NIFTY27JAN2525050CE" -> "27 Jan 25050CE"
+    const formatSymbol = (symbol) => {
+        if (!symbol || symbol.length < 10) return symbol;
+        // Extract date and strike from symbol like "NIFTY27JAN2525050CE"
+        const match = symbol.match(/NIFTY(\d{2})([A-Z]{3})(\d{2})(\d+)(CE|PE)/);
+        if (match) {
+            const [, day, month, year, strike, type] = match;
+            const monthMap = {
+                JAN: 'Jan', FEB: 'Feb', MAR: 'Mar', APR: 'Apr', MAY: 'May', JUN: 'Jun',
+                JUL: 'Jul', AUG: 'Aug', SEP: 'Sep', OCT: 'Oct', NOV: 'Nov', DEC: 'Dec'
+            };
+            return `${day} ${monthMap[month] || month} ${strike}${type}`;
+        }
+        return symbol;
+    };
+
+    if (data.ce_symbol && ceStrike) {
+        ceStrike.textContent = formatSymbol(data.ce_symbol);
+    } else if (data.atm_strike && ceStrike) {
+        ceStrike.textContent = data.atm_strike; // Fallback
+    }
+
+    if (data.pe_symbol && peStrike) {
+        peStrike.textContent = formatSymbol(data.pe_symbol);
+    } else if (data.atm_strike && peStrike) {
+        peStrike.textContent = data.atm_strike; // Fallback
+    }
+
+    // Update Trade Suggestion
+    const tradeSuggestion = document.getElementById('trade-suggestion');
+    if (data.suggestion && tradeSuggestion) {
+        tradeSuggestion.textContent = data.suggestion;
+
+        // Dynamic coloring
+        tradeSuggestion.style.color = 'var(--text-primary)'; // Default
+        if (data.suggestion.includes('BUY')) {
+            if (data.suggestion.includes('CE')) tradeSuggestion.style.color = 'var(--accent-green)';
+            if (data.suggestion.includes('PE')) tradeSuggestion.style.color = 'var(--accent-red)';
+        }
+    }
+
+    // ===================================
+    // Health Checks (V7)
+    // ===================================
+
+    // 1. Latency Monitor
+    const latencyDot = document.getElementById('latency-dot');
+    const latencyText = document.getElementById('latency-text');
+    if (data.latency_ms !== undefined && latencyDot && latencyText) {
+        latencyText.textContent = `${data.latency_ms}ms`;
+        latencyDot.className = 'latency-dot'; // Reset class
+
+        if (data.latency_ms < 500) {
+            latencyDot.classList.add('latency-good');
+            latencyText.style.color = 'var(--accent-green)';
+        } else if (data.latency_ms < 1500) {
+            latencyDot.classList.add('latency-warn');
+            latencyText.style.color = 'var(--accent-yellow)';
+        } else {
+            latencyDot.classList.add('latency-bad');
+            latencyText.style.color = 'var(--accent-red)';
+        }
+    }
+
+    // 2. Velocity Momentum Bar
+    const momentumBar = document.getElementById('momentum-bar');
+    if (data.velocity !== undefined && momentumBar) {
+        // Cap at 10 pts/sec for 100% width
+        const velocity = Math.abs(data.velocity);
+        const width = Math.min((velocity / 10) * 100, 100);
+        momentumBar.style.width = `${width}%`;
+    }
+
+    // 3. PCR Badge (Signal Box)
+    const pcrBadgeSignal = document.getElementById('pcr-badge-signal');
+    const pcrValueSignal = document.getElementById('pcr-value-signal');
+
+    if (data.pcr !== undefined && data.pcr !== null && pcrBadgeSignal && pcrValueSignal) {
+        pcrBadgeSignal.style.display = 'block';
+        pcrValueSignal.textContent = data.pcr.toFixed(2);
+
+        if (data.pcr > 1.0) {
+            pcrValueSignal.style.color = 'var(--accent-green)';
+        } else if (data.pcr < 0.7) {
+            pcrValueSignal.style.color = 'var(--accent-red)';
+        } else {
+            pcrValueSignal.style.color = 'var(--text-muted)';
+        }
+    } else if (pcrBadgeSignal) {
+        pcrBadgeSignal.style.display = 'none';
+    }
+
+    // Update PCR Badge (New)
+    const pcrBadge = document.getElementById('pcr-badge');
+    const pcrValueEl = document.getElementById('pcr-value');
+
+    if (data.pcr !== undefined && pcrBadge && pcrValueEl) {
+        pcrBadge.style.display = 'block';
+        pcrValueEl.textContent = data.pcr.toFixed(2);
+
+        pcrBadge.classList.remove('bullish', 'bearish');
+        if (data.pcr > 1.0) {
+            pcrBadge.classList.add('bullish');
+        } else if (data.pcr < 0.7) {
+            pcrBadge.classList.add('bearish');
+        }
+    }
+
+}
+
+
 
 // =============================================================================
 // DATE/TIME UPDATER
