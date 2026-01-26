@@ -1322,3 +1322,404 @@ body {
 }
 
 /* Remove Tick Table Styles if no longer used, or just leave them */
+
+/* =============================================================================
+   RESPONSIVE LAYOUT (Tablets & Phones)
+   - 1024px: Large tablets (Xiaomi Pad 6, iPad Pro)
+   - 768px: Small tablets (iPad Mini)
+   - 480px: Phones (OnePlus 13R)
+   - 360px: Small phones
+   IMPORTANT: Do not break existing desktop layout
+============================================================================= */
+
+/* Large Tablet Layout (1024px - Xiaomi Pad 6, iPad Pro) */
+@media (max-width: 1024px) {
+    .container {
+        padding: 12px;
+    }
+
+    .header {
+        padding: 14px 18px;
+    }
+
+    .header-right {
+        gap: 16px;
+    }
+
+    /* 2-column scalping grid for tablets */
+    .scalping-grid {
+        grid-template-columns: 1fr 2fr;
+        gap: 14px;
+    }
+
+    /* Signal spans full width below chart */
+    .signal-box {
+        grid-column: span 2;
+    }
+
+    /* Slightly smaller fonts */
+    .data-value {
+        font-size: 1.3rem;
+    }
+
+    .signal-text {
+        font-size: 2.2rem;
+    }
+
+    /* Chart optimization */
+    .chart-container {
+        height: 280px;
+    }
+
+    /* Ticker horizontal scroll */
+    .ticker-bar {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: thin;
+    }
+
+    .ticker-strip {
+        min-width: max-content;
+    }
+}
+
+/* Small Tablet Adjustments (768px) */
+@media (max-width: 768px) {
+    .container {
+        padding: 10px;
+    }
+
+    .header {
+        padding: 12px 16px;
+        flex-wrap: wrap;
+    }
+
+    .header-right {
+        flex-wrap: wrap;
+        gap: 12px;
+    }
+
+    /* Make ticker horizontally scrollable on tablets */
+    .ticker-bar {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+        /* Firefox */
+    }
+
+    .ticker-bar::-webkit-scrollbar {
+        display: none;
+        /* Chrome/Safari */
+    }
+
+    .ticker-strip {
+        min-width: max-content;
+    }
+
+    .scalping-grid {
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+    }
+
+    .signal-box {
+        grid-column: span 2;
+    }
+}
+
+/* Mobile Phone Layout (480px and below) */
+@media (max-width: 480px) {
+
+    /* Base Container */
+    .container {
+        padding: 8px;
+        gap: 12px;
+    }
+
+    /* Header - Stacked Layout */
+    .header {
+        flex-direction: column;
+        align-items: flex-start;
+        padding: 12px;
+        gap: 12px;
+    }
+
+    .header-left {
+        width: 100%;
+    }
+
+    .logo-container {
+        gap: 8px;
+    }
+
+    .logo-image {
+        width: 28px;
+        height: 28px;
+    }
+
+    .logo {
+        font-size: 1.1rem;
+    }
+
+    .header-datetime {
+        gap: 8px;
+    }
+
+    .datetime-date {
+        font-size: 0.75rem;
+    }
+
+    .datetime-time {
+        font-size: 0.8rem;
+        padding: 3px 8px;
+    }
+
+    .header-right {
+        width: 100%;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+
+    /* Compact status badges on mobile */
+    .status-badge,
+    .latency-badge,
+    .market-status-badge {
+        padding: 6px 10px;
+        font-size: 0.75rem;
+    }
+
+    .stat-item {
+        gap: 2px;
+    }
+
+    .stat-label {
+        font-size: 0.65rem;
+    }
+
+    .stat-value {
+        font-size: 0.9rem;
+    }
+
+    /* Ticker - Horizontal Scroll on Mobile */
+    .ticker-bar {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+        padding: 8px 0;
+    }
+
+    .ticker-bar::-webkit-scrollbar {
+        display: none;
+    }
+
+    .ticker-strip {
+        min-width: max-content;
+        gap: 16px;
+        padding: 0 8px;
+    }
+
+    .ticker-item {
+        min-width: 120px;
+        padding: 6px 10px;
+    }
+
+    .ticker-name {
+        font-size: 0.7rem;
+    }
+
+    .ticker-value {
+        font-size: 0.85rem;
+    }
+
+    .ticker-change {
+        font-size: 0.75rem;
+    }
+
+    /* Scalping Section */
+    .scalping-section {
+        margin-top: 12px;
+        padding-top: 12px;
+    }
+
+    .section-title {
+        font-size: 1rem;
+        margin-bottom: 12px;
+    }
+
+    /* Scalping Grid - Single Column Stack */
+    .scalping-grid {
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
+
+    /* Data Panel */
+    .scalp-data-panel {
+        padding: 12px;
+    }
+
+    .data-row {
+        padding: 10px 0;
+    }
+
+    .data-label {
+        font-size: 0.8rem;
+    }
+
+    .data-value {
+        font-size: 1.1rem;
+    }
+
+    .strike-badge {
+        font-size: 0.65rem;
+        padding: 2px 6px;
+    }
+
+    /* Bias Gauge */
+    .bias-value-inline {
+        font-size: 1.3rem;
+    }
+
+    .bias-labels {
+        font-size: 0.6rem;
+    }
+
+    /* Straddle Value */
+    .straddle-value {
+        font-size: 1.3rem;
+    }
+
+    /* Chart Panel */
+    .chart-panel {
+        padding: 12px;
+        min-height: 250px;
+    }
+
+    .panel-header {
+        margin-bottom: 8px;
+    }
+
+    .panel-title {
+        font-size: 0.85rem;
+    }
+
+    .chart-status-badge {
+        font-size: 0.65rem;
+        padding: 3px 8px;
+    }
+
+    .chart-container {
+        height: 200px;
+    }
+
+    .chart-legend {
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 8px;
+    }
+
+    .legend-item {
+        font-size: 0.65rem;
+    }
+
+    /* Signal Box - Full Width & Prominent */
+    .signal-box {
+        padding: 16px;
+    }
+
+    .signal-icon {
+        width: 50px;
+        height: 50px;
+    }
+
+    .signal-icon svg {
+        width: 28px;
+        height: 28px;
+    }
+
+    .signal-text {
+        font-size: 1.8rem;
+    }
+
+    .signal-desc {
+        font-size: 0.8rem;
+    }
+
+    .trade-suggestion-box {
+        padding: 10px 12px;
+    }
+
+    .suggestion-label {
+        font-size: 0.6rem;
+    }
+
+    .suggestion-value {
+        font-size: 0.95rem;
+        white-space: pre-line;
+        /* Allow multi-line trap messages */
+    }
+
+    /* PCR Badge */
+    .pcr-badge-signal {
+        font-size: 0.8rem;
+        padding: 5px 12px;
+    }
+
+    /* Legend */
+    .scalp-legend-container {
+        padding: 12px;
+        margin-top: 12px;
+    }
+
+    .scalp-legend {
+        flex-wrap: wrap;
+        gap: 12px;
+    }
+
+    .scalp-legend-item {
+        font-size: 0.7rem;
+    }
+
+    /* How It Works Section */
+    .how-it-works {
+        padding: 12px;
+    }
+
+    .how-it-works-title {
+        font-size: 0.8rem;
+        margin-bottom: 8px;
+    }
+
+    .formula-row {
+        font-size: 0.7rem;
+        padding: 4px 0;
+    }
+
+    .legend-row {
+        font-size: 0.65rem;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+}
+
+/* Extra Small Phones (360px and below) */
+@media (max-width: 360px) {
+    .logo {
+        font-size: 0.95rem;
+    }
+
+    .signal-text {
+        font-size: 1.5rem;
+    }
+
+    .data-value {
+        font-size: 1rem;
+    }
+
+    .bias-value-inline {
+        font-size: 1.1rem;
+    }
+
+    .ticker-item {
+        min-width: 100px;
+    }
+}
