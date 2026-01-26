@@ -587,12 +587,34 @@ async function updateScalper() {
             }
         }
 
-        // Update ATM Strike badges
+        // Update ATM Strike badges with full symbol names
         const ceStrike = document.getElementById('ce-strike');
         const peStrike = document.getElementById('pe-strike');
-        if (data.atm_strike) {
-            if (ceStrike) ceStrike.textContent = data.atm_strike;
-            if (peStrike) peStrike.textContent = data.atm_strike;
+        
+        // Format symbol: "NIFTY27JAN2525050CE" -> "27 Jan 25050CE"
+        const formatSymbol = (symbol) => {
+            if (!symbol || symbol.length < 10) return symbol;
+            // Extract date and strike from symbol like "NIFTY27JAN2525050CE"
+            const match = symbol.match(/NIFTY(\d{2})([A-Z]{3})(\d{2})(\d+)(CE|PE)/);
+            if (match) {
+                const [, day, month, year, strike, type] = match;
+                const monthMap = {JAN:'Jan', FEB:'Feb', MAR:'Mar', APR:'Apr', MAY:'May', JUN:'Jun',
+                                  JUL:'Jul', AUG:'Aug', SEP:'Sep', OCT:'Oct', NOV:'Nov', DEC:'Dec'};
+                return `${day} ${monthMap[month] || month} ${strike}${type}`;
+            }
+            return symbol;
+        };
+        
+        if (data.ce_symbol && ceStrike) {
+            ceStrike.textContent = formatSymbol(data.ce_symbol);
+        } else if (data.atm_strike && ceStrike) {
+            ceStrike.textContent = data.atm_strike; // Fallback
+        }
+        
+        if (data.pe_symbol && peStrike) {
+            peStrike.textContent = formatSymbol(data.pe_symbol);
+        } else if (data.atm_strike && peStrike) {
+            peStrike.textContent = data.atm_strike; // Fallback
         }
 
         // Update Trade Suggestion

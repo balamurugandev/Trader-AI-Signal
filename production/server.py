@@ -143,7 +143,8 @@ sentiment = "NEUTRAL"  # BULLISH, BEARISH, NEUTRAL
 straddle_trend = "FLAT"  # RISING, FALLING, FLAT
 straddle_sma3: Optional[float] = None  # 3-period SMA of straddle
 current_atm_strike: Optional[int] = None  # Current ATM for frontend display
-current_atm_strike: Optional[int] = None  # Current ATM for frontend display
+current_ce_symbol: str = ""  # Full CE symbol name (e.g., NIFTY27JAN2525050CE)
+current_pe_symbol: str = ""  # Full PE symbol name (e.g., NIFTY27JAN2525050PE)
 trade_suggestion = "WAIT"  # Current trade suggestion
 momentum_buffer: deque = deque(maxlen=20) # V6: Velocity Buffer
 last_price_for_velocity: float = 0.0 # V6: For tracking change
@@ -563,6 +564,7 @@ def update_scalping_data():
     global current_atm_strike, real_basis, sentiment, straddle_trend, straddle_sma3, trade_suggestion
     global is_trap, raw_basis_history, pcr_value, smart_api_global, market_status
     global momentum_buffer, last_price_for_velocity # V6 Fix: Added missing globals
+    global current_ce_symbol, current_pe_symbol  # Full symbol names for UI
     
     print("🚀 Scalping Module thread started")
     
@@ -596,6 +598,8 @@ def update_scalping_data():
     ce_symbol = tokens.get('ce_symbol', '')
     pe_symbol = tokens.get('pe_symbol', '')
     current_atm_strike = tokens.get('atm_strike', 0)
+    current_ce_symbol = ce_symbol  # Set global for UI
+    current_pe_symbol = pe_symbol  # Set global for UI
     current_expiry = tokens.get('expiry_date')
     
     print(f"📈 Scalping ready: ATM={current_atm_strike}, Expiry={current_expiry}")
@@ -1047,6 +1051,8 @@ async def get_scalper_data():
             "suggestion": trade_suggestion,
             "pcr": pcr_value,  # New PCR Value
             "atm_strike": current_atm_strike,  # Current ATM Strike
+            "ce_symbol": current_ce_symbol,  # Full CE Symbol Name
+            "pe_symbol": current_pe_symbol,  # Full PE Symbol Name
             "history": list(scalping_history)[-50:]
         }
 

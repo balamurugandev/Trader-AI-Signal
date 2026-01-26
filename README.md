@@ -30,12 +30,20 @@ TOTP_SECRET=your_totp_secret
 
 ## ▶️ How to Run (Daily Usage)
 
-1. Run the server:
-   ```bash
-   python3 server.py
-   ```
-2. **Open your browser** and navigate to:
-   👉 **http://localhost:8000**
+This system is split into **Production** (Live Trading) and **Testing** (Simulation).
+
+### 🟢 Run Production Server (Live Market)
+```bash
+python3 production/server.py
+```
+> **Open Dashboard:** [http://localhost:8000](http://localhost:8000)
+
+### 🟡 Run Stress Test / Simulation
+```bash
+python3 testing/test_server.py
+```
+> **Open Test Dashboard:** [http://localhost:8001](http://localhost:8001)  
+> *Use `http://localhost:8001/control` to inject scenarios (e.g., Crash, Rally).*
 
 ---
 
@@ -43,39 +51,43 @@ TOTP_SECRET=your_totp_secret
 
 - **Real-Time Data**: Ultra-fast updates via SmartAPI WebSockets.
 - **Dynamic ATM Tracking**: Automatically detects the current ATM strike and switches tokens.
-- **Professional Analytics**:
-  - **Synthetic Future Calculation**: `ATM Strike + CE - PE`
-  - **Market Bias (Real Basis)**: `Synthetic Future - Spot`
-  - **Straddle Trend**: 3-Period SMA of Straddle Price (CE+PE).
-- **Smart Signals**:
-  - **Bullish/Bearish Sentiment** based on Market Bias.
-  - **Trade Suggestions**: Specific `BUY CE` or `BUY PE` recommendations.
-- **Modern UI**: Dark/Glassmorphism design | 12-Hour IST Time | Real-time Charts.
+- **3-Column Professional Layout**:
+  1.  **Data Engine**: Future Price, Strike Prices, and **Market Bias Meter** (Glow Effect).
+  2.  **Strategy Chart**: Large center chart tracking **Straddle Price** (CE+PE) trends.
+  3.  **Signal Cockpit**: Clean panel with Buy/Sell recommendations and Signal Legends.
+- **Advanced Logic (Velocity V6)**:
+  - **Momentum-Based Signals**: Validates entry only when price velocity confirms direction.
+  - **Synthetic Future Calculation**: `(ATM Strike + CE) - PE`.
+  - **Straddle Trend**: Prevents trading into Theta Decay.
+- **Smart Filters**:
+  - **PCR Filter**: Avoids traps (e.g., Bull signal blocked if PCR < 0.6).
+  - **Hysteresis**: Prevents ATM flicker when spot is at strike boundary.
 
 ---
 
 ## 🧠 Core Logic (The Secret Sauce)
 
-This dashboard uses institutional-grade logic rather than simple indicators.
+This dashboard uses institutional-grade logic rather than simple moving averages.
 
-### 1. Synthetic Future & Market Bias (Relative Z-Score)
+### 1. Synthetic Future & Market Bias (Basis)
 To solve the "Cost of Carry" permanent bull bias in Indian markets:
 - **Old Standard**: `Synthetic - Spot` (Always positive).
 - **New Pro Logic**: `Relative Sentiment = Current Basis - 5min Average Basis`.
 - **Signal**:
-  - `> +3`: 🟢 **BULLISH** (Momentum Spike)
-  - `< -3`: 🔴 **BEARISH** (Momentum Drop)
+  - `> +3`: 🟢 **BULLISH** (Institutional Long Buildup)
+  - `< -3`: 🔴 **BEARISH** (Institutional Short Buildup)
 
-### 2. Straddle Trend & Logic
+### 2. Straddle Trend (Theta Protection)
 We track the **Straddle Price** (`ATM CE + ATM PE`) to avoid trading into decay.
 - **RISING Straddle**: Momentum is increasing (Safe to enter).
 - **FALLING Straddle**: Theta decay is dominant (Stay away).
 
-### 3. ATM Hysteresis (Anti-Flicker)
-Prevents rapid token switching when Spot hovers between strikes (e.g., 25025).
-- **Logic**: Only switch ATM if Spot moves **> 40 points** from the current strike.
+### 3. Velocity V6 Engine
+Price changes are validated against time:
+- **Fast Moves**: High Velocity = Genuine Breakout.
+- **Slow Drift**: Low Velocity = Trap/Decay.
 
-### 4. Smart Signals + TRAP Filter (PCR)
+### 4. Smart Signal Matrix
 Combines Sentiment + Trend + **OI Data** to generate signals:
 
 | Sentiment | Trend | OI (PCR) | Signal | Suggestion |
@@ -88,61 +100,13 @@ Combines Sentiment + Trend + **OI Data** to generate signals:
 
 ---
 
-## 🛡️ Logic Safety Verification
-
-We ensure the app logic is robust by using **isolated simulation tests**.
-**WARNING:** Never run extensive stress tests on the live `server.py` while trading. Use the standalone testing approach below.
-
-### How to Test Safely (Simulation)
-Create a file named `tests/verify_logic.py` to simulate market conditions without connecting to the API:
-
-```python
-import unittest
-from collections import deque
-
-class TestStrategy(unittest.TestCase):
-    def test_pcr_trap(self):
-        # Simulate: Bullish Signal but Low PCR (Call Writing)
-        signal = "BUY CALL"
-        pcr = 0.5  # Trap Level
-        
-        final_signal = signal
-        if signal == "BUY CALL" and pcr < 0.6:
-            final_signal = "TRAP"
-            
-        print(f"Scenario: {signal} + PCR {pcr} -> {final_signal}")
-        self.assertEqual(final_signal, "TRAP")
-
-if __name__ == '__main__':
-    unittest.main()
-```
-
-Run this simulation to verify logic upgrades before deploying to production.
-
----
-
 ## 🛠 Tech Stack
 
 - **Backend**: Python (FastAPI, Uvicorn, Threading)
 - **Data**: Angel One SmartAPI (WebSocket & REST)
-- **Frontend**: Vanilla JavaScript (WebSockets), HTML5, CSS3 (Variables, Flexbox)
-- **Charting**: Chart.js (Real-time visualizations)
-
----
-
-## 📸 Dashboard Overview 
-
-*(Screenshots of the dashboard showing the Signal Panel, Explanatory Legend, and Charts)*
-
-### Signal Legend
-- ⚪ **WAIT**: No clear trend or decay
-- 🟢 **BUY CALL**: Bullish Sentiment + Rising Straddle ([PCR > 1.0] Supports)
-- 🔴 **BUY PUT**: Bearish Sentiment + Rising Straddle ([PCR < 0.7] Supports)
-- ⚠️ **TRAP**: High OI Contrast (Price vs Data Mismatch)
-
----
-
-**Disclaimer**: This tool is for educational purposes only. Trading Options involves high risk. Use at your own discretion.
+- **Frontend**: Vanilla JavaScript (WebSockets), CSS3 (Dark Theme, Glassmorphism)
+- **Charting**: Chart.js (Canvas-based high-performance rendering)
+- **Architecture**: Modular (Separated Production & Testing Logic)
 
 ---
 
@@ -157,3 +121,6 @@ If you see these errors in the terminal:
 1.  **Check Internet**: Your connection to Angel One API is unstable.
 2.  **Ignore**: The system automatically retries on the next poll (every 1 second). Pushing through occasional errors is normal.
 3.  **VPN**: If consistent, try disabling/enabling VPN as some IPs are rate-limited by Angel One.
+
+---
+**Disclaimer**: This tool is for educational purposes only. Trading Options involves high risk. Use at your own discretion.
