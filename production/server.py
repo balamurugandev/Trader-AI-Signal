@@ -696,10 +696,11 @@ def update_scalping_data():
             # SMART API POLLING: Only fetch fresh data every 5 seconds
             # Use cached/forward-filled data in between for 1Hz updates
             # This prevents 3-4 second delays when API is slow (holidays/rate limits)
-            should_fetch_fresh_data = False
-            if 'last_api_fetch_time' not in globals():
+            global last_api_fetch_time
+            if 'last_api_fetch_time' not in globals() or last_api_fetch_time is None:
                 last_api_fetch_time = 0
             
+            should_fetch_fresh_data = False
             time_since_last_fetch = loop_start_time - last_api_fetch_time
             if time_since_last_fetch >= 5.0:  # Fetch every 5 seconds
                 should_fetch_fresh_data = True
