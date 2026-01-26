@@ -4,11 +4,14 @@
 ============================================================================= */
 
 :root {
-    /* Colors */
-    --bg-primary: #0a0a0f;
-    --bg-secondary: #12121a;
-    --bg-card: rgba(255, 255, 255, 0.03);
-    --bg-card-hover: rgba(255, 255, 255, 0.05);
+    /* Colors - Ocean Blue Theme (StockMojo Inspired) */
+    --bg-primary: #2f3f4f;
+    /* Extracted Ocean Blue */
+    --bg-secondary: #263442;
+    /* Slightly darker shade for contrast */
+    --bg-card: rgba(38, 52, 66, 0.4);
+    /* Translucent blue-grey */
+    --bg-card-hover: rgba(38, 52, 66, 0.6);
 
     --text-primary: #ffffff;
     --text-secondary: #d0d0e0;
