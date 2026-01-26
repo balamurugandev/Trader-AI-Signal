@@ -1,44 +1,71 @@
-/* Ticker Tape */
+/* Ticker Tape - Official Broker Style (Inline Compact) */
 .ticker-tape {
-    display: flex;
-    align-items: center;
-    gap: 32px;
-    padding: 12px 24px;
-    background: var(--bg-card);
-    /* Glassmorphism background consistent with header */
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius-lg);
-    backdrop-filter: blur(10px);
-    overflow-x: auto;
-    /* Allow scrolling if content overflows on small screens */
-    white-space: nowrap;
+    display: grid;
+    /* Responsive Grid: 3 columns on desktop */
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 16px;
+    padding: 0;
+    width: 100%;
 }
 
 .ticker-item {
     display: flex;
+    justify-content: flex-start;
+    /* Pack items left */
     align-items: center;
-    gap: 12px;
-    font-size: 0.9rem;
-    font-weight: 600;
+    gap: 8px;
+    /* Strict 8px gap matching reference */
+    padding: 12px 16px;
+    background: rgba(255, 255, 255, 0.05);
+    /* Lighter background */
+    border-radius: 4px;
+    /* Sharper corners */
+    backdrop-filter: blur(5px);
+    transition: all 0.2s ease;
+    /* No border */
+}
+
+.ticker-item:hover {
+    background: rgba(255, 255, 255, 0.08);
+    /* Subtle hover */
 }
 
 .ticker-name {
-    color: var(--text-secondary);
+    color: var(--text-primary);
+    /* Darker/Stronger */
     text-transform: uppercase;
-    font-size: 0.8rem;
+    font-size: 0.85rem;
+    /* Larger Name */
+    font-weight: 700;
     letter-spacing: 0.5px;
+    margin-right: 4px;
+    /* Tiny separation */
 }
 
 .ticker-value {
     color: var(--text-primary);
-    font-family: var(--font-mono);
+    font-family: var(--font-main);
+    font-size: 0.9rem;
+    /* Smaller Price */
+    font-weight: 500;
+    font-variant-numeric: tabular-nums;
 }
 
 .ticker-change {
+    font-family: var(--font-main);
     font-size: 0.85rem;
-    font-family: var(--font-mono);
+    font-weight: 400;
+    /* Lighter weight */
+    padding: 0;
+    background: transparent;
+    /* No badge bg */
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    font-variant-numeric: tabular-nums;
 }
 
+/* Color only the text, matching reference */
 .ticker-change.positive {
     color: var(--accent-green);
 }
@@ -46,5 +73,3 @@
 .ticker-change.negative {
     color: var(--accent-red);
 }
-
-/* Remove Tick Table Styles if no longer used, or just leave them */
