@@ -311,6 +311,35 @@ body {
     font-size: 1.1rem;
     font-weight: 600;
     color: var(--accent-blue);
+    /* Default blue */
+}
+
+/* ============================================= */
+/* GLOBAL DYNAMIC COLOR UTILITIES */
+/* ============================================= */
+
+/* Universal positive/negative classes - can be applied to ANY element */
+.positive,
+.text-green {
+    color: var(--accent-green) !important;
+}
+
+.negative,
+.text-red {
+    color: var(--accent-red) !important;
+}
+
+/* Latency Badge Dynamic Colors */
+.latency-badge.good .latency-text {
+    color: var(--accent-green);
+}
+
+.latency-badge.warn .latency-text {
+    color: var(--accent-yellow);
+}
+
+.latency-badge.bad .latency-text {
+    color: var(--accent-red);
 }
 
 /* Main Content */
