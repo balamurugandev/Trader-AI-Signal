@@ -880,7 +880,7 @@ def update_scalping_data():
                           # High Velocity but Low PCR = Divergence
                           scalping_signal = "TRAP"
                           is_trap = True
-                          trade_suggestion = "⚠️ TRAP - Price Rising but Data Bearish"
+                          trade_suggestion = f"⚠️ BULL TRAP! PCR={pcr_value:.2f} (LOW)\n📈 Price Rising but Bearish OI\n🎯 Smart Money SELLING"
                           
                 # BUY PUT LOGIC
                 elif current_velocity < -0.4:
@@ -891,7 +891,7 @@ def update_scalping_data():
                           # Drop but High PCR = Divergence (Dip Buy?)
                           scalping_signal = "TRAP"
                           is_trap = True
-                          trade_suggestion = "⚠️ TRAP - Price Falling but Data Bullish"
+                          trade_suggestion = f"⚠️ BEAR TRAP! PCR={pcr_value:.2f} (HIGH)\n📉 Price Falling but Bullish OI\n🎯 Smart Money BUYING"
                 
                 # SIDEWAYS
                 elif abs(current_velocity) < 0.2:

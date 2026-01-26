@@ -158,16 +158,24 @@ async def websocket_endpoint(websocket: WebSocket):
                 elif abs(avg_velocity) < 0.2:
                       suggestion = "⚪ SIDEWAYS - Scalping Zone"
             
-            if "TRAP" in extra["scenario"]: 
+            # DETAILED TRAP SIGNALS WITH EXPLANATIONS
+            if extra["scenario"] == "BULL_TRAP":
                 signal = "TRAP" 
                 color = "#ffa500"
-                suggestion = "⚠️ TRAP DETECTED"
+                pcr_val = extra["pcr"]
+                suggestion = f"⚠️ BULL TRAP DETECTED!\n📈 Price RISING but PCR={pcr_val:.2f} (LOW)\n💡 Bearish OI dominance = Reversal Risk\n🎯 Smart Money is SELLING into strength"
+            elif extra["scenario"] == "BEAR_TRAP":
+                signal = "TRAP" 
+                color = "#ffa500"
+                pcr_val = extra["pcr"]
+                suggestion = f"⚠️ BEAR TRAP DETECTED!\n📉 Price FALLING but PCR={pcr_val:.2f} (HIGH)\n💡 Bullish OI dominance = Reversal Risk\n🎯 Smart Money is BUYING the dip"
             
             # UPDATE SHARED SCALPING STATE
             future = extra["future"]
             ce = extra["ce"]
             pe = extra["pe"]
-            straddle = ce + pe
+            # FIXED: Straddle Price = AVERAGE of CE + PE (matches production server.py line 835)
+            straddle = round((ce + pe) / 2, 2)
             basis = future - price
             
             # Dynamic ATM Strike Calculation
