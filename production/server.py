@@ -22,8 +22,16 @@ import pyotp
 from dotenv import load_dotenv
 import os
 
+import logging
 from SmartApi import SmartConnect
 from SmartApi.smartWebSocketV2 import SmartWebSocketV2
+
+# Configure Logging
+logging.basicConfig(level=logging.INFO, format='%(levelname)s:     %(message)s')
+# Silence heavy loggers
+logging.getLogger("smartConnect").setLevel(logging.ERROR)
+logging.getLogger("urllib3").setLevel(logging.ERROR)
+logging.getLogger("requests").setLevel(logging.ERROR)
 
 # =============================================================================
 # LOAD ENVIRONMENT VARIABLES
@@ -155,6 +163,7 @@ raw_basis_history: deque = deque(maxlen=300)  # For Z-Score (300 ticks ~ 5 mins)
 pcr_value: Optional[float] = None
 is_trap = False
 last_tick_timestamp: float = 0.0  # Time of last received tick (for latency)
+current_latency_ms: float = 0.0 # Smoothed RTT Latency (Stable Metric)
 points_per_sec: float = 0.0  # Current velocity (points/sec)
 
 # =============================================================================
@@ -488,7 +497,7 @@ def fetch_ltp(smart_api, exchange: str, trading_symbol: str, token: str) -> Opti
     if token is None:
         return None
     try:
-        time.sleep(0.2)  # Rate limit protection
+        # time.sleep(0.2)  # Removed for parallel optimization
         data = smart_api.ltpData(exchange, trading_symbol, token)
         if data and data.get('data') and data['data'].get('ltp'):
             return float(data['data']['ltp'])
@@ -569,7 +578,7 @@ def update_scalping_data():
     global is_trap, raw_basis_history, pcr_value, smart_api_global, market_status
     global momentum_buffer, last_price_for_velocity # V6 Fix: Added missing globals
     global current_ce_symbol, current_pe_symbol  # Full symbol names for UI
-    global last_tick_timestamp, points_per_sec # V7: Health Checks
+    global last_tick_timestamp, points_per_sec, current_latency_ms # V7: Health Checks
     
     print("🚀 Scalping Module thread started")
     
@@ -672,18 +681,47 @@ def update_scalping_data():
             else:
                 current_atm = current_atm_strike
             
-            # Fetch LTPs in PARALLEL to reduce latency (Fix for stable ping)
-            # Sequential: 300ms + 300ms + 300ms = 900ms lag
-            # Parallel: max(300, 300, 300) = ~300ms lag
-            with ThreadPoolExecutor(max_workers=3) as executor:
-                future_fut = executor.submit(fetch_ltp, smart_api_global, "NFO", future_symbol, future_token) if future_token else None
-                future_ce = executor.submit(fetch_ltp, smart_api_global, "NFO", ce_symbol, atm_ce_token) if atm_ce_token else None
-                future_pe = executor.submit(fetch_ltp, smart_api_global, "NFO", pe_symbol, atm_pe_token) if atm_pe_token else None
-                
-                fut_ltp = future_fut.result() if future_fut else None
-                ce_ltp = future_ce.result() if future_ce else None
-                pe_ltp = future_pe.result() if future_pe else None
+            # HYBRID DATA FETCHING (V10 Optimization)
+            # 1. Check WebSocket Cache (0ms Latency)
+            # 2. Fallback to Parallel Polling (~300ms Latency)
             
+            fetch_start_time = time.time() # Measure RTT
+            
+            fut_ltp = ticker_data.get(future_token, {}).get('ltp') if future_token else None
+            ce_ltp = ticker_data.get(atm_ce_token, {}).get('ltp') if atm_ce_token else None
+            pe_ltp = ticker_data.get(atm_pe_token, {}).get('ltp') if atm_pe_token else None
+            
+            # If any data is missing from WS, fetch from API in parallel
+            missing_tokens = []
+            if not fut_ltp and future_token: missing_tokens.append(('fut', future_symbol, future_token))
+            if not ce_ltp and atm_ce_token: missing_tokens.append(('ce', ce_symbol, atm_ce_token))
+            if not pe_ltp and atm_pe_token: missing_tokens.append(('pe', pe_symbol, atm_pe_token))
+            
+            if missing_tokens:
+                with ThreadPoolExecutor(max_workers=5) as executor:
+                    futures_map = {
+                        item[0]: executor.submit(fetch_ltp, smart_api_global, "NFO", item[1], item[2]) 
+                        for item in missing_tokens
+                    }
+                    
+                    if 'fut' in futures_map: fut_ltp = futures_map['fut'].result()
+                    if 'ce' in futures_map: ce_ltp = futures_map['ce'].result()
+                    if 'pe' in futures_map: pe_ltp = futures_map['pe'].result()
+            
+            # Update RTT Latency (Stable Metric)
+            fetch_end_time = time.time()
+            if fut_ltp or ce_ltp or pe_ltp:
+                 last_tick_timestamp = time.time() # Keep timestamp for "Last Updated" logic if needed
+                 
+                 # Calculate RTT in MS
+                 rtt_ms = (fetch_end_time - fetch_start_time) * 1000
+                 
+                 # Smooth the latency (EMA)
+                 if 'current_latency_ms' not in globals() or current_latency_ms == 0:
+                     current_latency_ms = rtt_ms
+                 else:
+                     current_latency_ms = (current_latency_ms * 0.7) + (rtt_ms * 0.3)
+                 
             poll_count += 1
             if poll_count % 10 == 1:  # Log every 10th poll
                 print(f"📊 Poll #{poll_count}: ATM={current_atm}, FUT={fut_ltp}, CE={ce_ltp}, PE={pe_ltp}")
@@ -1070,7 +1108,7 @@ async def get_scalper_data():
             "atm_strike": current_atm_strike,  # Current ATM Strike
             "ce_symbol": current_ce_symbol,  # Full CE Symbol Name
             "pe_symbol": current_pe_symbol,  # Full PE Symbol Name
-            "latency_ms": int((time.time() - last_tick_timestamp) * 1000) if last_tick_timestamp > 0 else 0, # ms latency
+            "latency_ms": int(current_latency_ms), # RTT Latency (Smoothed)
             "velocity": points_per_sec, # Velocity in points/sec
             "history": list(scalping_history)[-50:]
         }
