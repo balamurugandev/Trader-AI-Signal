@@ -634,6 +634,7 @@ function updateScalperUI(data) {
 
             // Log if it's a new Trade Signal OR a Trap
             if (isMeaningful) {
+                console.log("HISTORY UPDATE:", data.signal);
                 updateSignalHistory(data.signal, data);
             }
 
