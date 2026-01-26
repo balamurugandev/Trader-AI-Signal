@@ -43,10 +43,16 @@
     */
     --font-mono: 'Inter', sans-serif;
 
-    /* Spacing */
-    --radius-sm: 8px;
-    --radius-md: 12px;
-    --radius-lg: 16px;
+    /* Spacing & Borders (StockMojo Style) */
+    --radius-sm: 4px;
+    --radius-md: 6px;
+    /* Sharper, professional corners */
+    --radius-lg: 8px;
+    /* Reduced from 16px */
+
+    --border-color: rgba(148, 163, 184, 0.15);
+    /* Slate-400 with opacity */
+    --border-hover: rgba(148, 163, 184, 0.3);
 }
 
 /* Global Modifier for Tabular Numbers (applies to anything using the 'mono' class concept) */
