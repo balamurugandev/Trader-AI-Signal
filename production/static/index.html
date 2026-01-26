@@ -13,7 +13,7 @@
     <link rel="manifest" href="/static/manifest.json">
     <link rel="apple-touch-icon" href="/static/logo.png">
     <link rel="icon" type="image/png" href="/static/logo.png">
-    <link rel="stylesheet" href="/static/style.css?v=tablet_v1">
+    <link rel="stylesheet" href="/static/style.css?v=history_v3">
     <link rel="stylesheet" href="/static/ticker.css?v=broker_style_v1">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -236,6 +236,15 @@
                             <span class="s-dot trap">⚠️</span> <span><strong>TRAP</strong>: OI Clash</span>
                         </div>
                     </div>
+
+                    <!-- History Log -->
+                    <div class="signal-history-section">
+                        <h3 class="history-title">📜 Last 5 Signals</h3>
+                        <div id="signal-history-list" class="signal-history-list">
+                            <!-- Items will be added here dynamically -->
+                            <div class="history-empty">No signals yet...</div>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -247,7 +256,7 @@
         </div>
 
         <script src="/static/market_schedule.js?v=2026"></script>
-        <script src="/static/app.js?v=fixed_v8"></script>
+        <script src="/static/app.js?v=history_v4"></script>
 </body>
 
 </html>

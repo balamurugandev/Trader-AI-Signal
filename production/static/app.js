@@ -23,6 +23,7 @@ const lastUpdate = document.getElementById('last-update');
 
 // Cached Scalping Elements
 let scalpingStatus, futurePrice, cePrice, pePrice, basisValue, biasFill, straddleValue;
+window.lastSignalState = null; // Track last signal for history log
 let scalpingSignalBox, scalpSignalIcon, scalpSignalText, scalpSignalDesc;
 let ceStrike, peStrike, tradeSuggestion, latencyDot, latencyText, momentumBar;
 let pcrBadgeSignal, pcrValueSignal, pcrBadge, pcrValueEl;
@@ -613,12 +614,30 @@ function updateScalperUI(data) {
             scalpSignalIcon.textContent = '⚪';
             scalpSignalText.textContent = 'WAIT';
 
-            // More helpful wait message
             if (trend === 'FALLING') {
                 scalpSignalDesc.textContent = '📉 Straddle Decay - Do Not Enter';
             } else {
                 scalpSignalDesc.textContent = `${sentiment} | Waiting for trend...`;
             }
+        }
+
+        // ===================================
+        // SIGNAL HISTORY LOG (Last 5)
+        // ===================================
+        // Only log if signal changed AND it's a trade signal (BUY/SELL/TRAP)
+        // OR if it changed from a trade signal back to WAIT (to show exit/reset)
+        if (data.signal !== window.lastSignalState) {
+            // Log valuable state changes
+            const meaningfulSignals = ['BUY CALL', 'BUY PUT', 'TRAP'];
+            const wasMeaningful = meaningfulSignals.includes(window.lastSignalState);
+            const isMeaningful = meaningfulSignals.includes(data.signal);
+
+            // Log if it's a new Trade Signal OR a Trap
+            if (isMeaningful) {
+                updateSignalHistory(data.signal, data);
+            }
+
+            window.lastSignalState = data.signal;
         }
     }
 
@@ -836,4 +855,103 @@ document.addEventListener('DOMContentLoaded', () => {
     // Poll scalper data every 1 second
     setInterval(updateScalper, 1000);
     updateScalper(); // Initial fetch
+    loadSignalHistory(); // Load saved history
 });
+
+function loadSignalHistory() {
+    const historyList = document.getElementById('signal-history-list');
+    if (!historyList) return;
+
+    const saved = localStorage.getItem('scalp_signal_history');
+    if (saved) {
+        try {
+            const items = JSON.parse(saved);
+            if (Array.isArray(items) && items.length > 0) {
+                const emptyMsg = historyList.querySelector('.history-empty');
+                if (emptyMsg) emptyMsg.remove();
+
+                // Items saved as [newest, ..., oldest]
+                // We append them in order because we are rebuilding from top down?
+                // No, prepend adds to top. If we iterate [newest, oldest], and prepend each, oldest ends up on top!
+                // So we must iterate in REVERSE (oldest to newest) to prepend correctly?
+                // OR use appendChild. Since list is empty (except empty msg), if we append [newest, oldest], newest is first. Correct.
+
+                items.forEach(data => {
+                    const item = createHistoryItem(data.signal, data.timestamp, data.pcr, data.basis);
+                    historyList.appendChild(item);
+                });
+
+                // Restore last state
+                if (items[0]) window.lastSignalState = items[0].signal;
+            }
+        } catch (e) {
+            console.error(e);
+        }
+    }
+}
+
+function createHistoryItem(signal, time, pcr, basis) {
+    const item = document.createElement('div');
+    const typeClass = signal === 'BUY CALL' ? 'call' :
+        signal === 'BUY PUT' ? 'put' :
+            signal === 'TRAP' ? 'trap' : '';
+
+    item.className = `history-item ${typeClass}`;
+
+    const icon = signal === 'BUY CALL' ? '🟢' :
+        signal === 'BUY PUT' ? '🔴' :
+            '⚠️';
+
+    // Ensure pcr/basis are strings or handled
+    const pcrStr = pcr ? `PCR: ${pcr}` : '';
+    const basisStr = basis ? `Bias: ${basis}` : '';
+
+    item.innerHTML = `
+        <div class="h-left" style="display:flex; align-items:center; gap:8px;">
+            <div class="h-time" style="min-width:65px;">${time}</div>
+            <div class="h-signal" style="font-weight:700;">${icon} ${signal}</div>
+        </div>
+        <div class="h-details">
+            ${pcrStr} <span style="opacity:0.3">|</span> ${basisStr}
+        </div>
+    `;
+    return item;
+}
+
+function updateSignalHistory(signal, data) {
+    const historyList = document.getElementById('signal-history-list');
+    if (!historyList) return;
+
+    // Remove empty placeholder
+    const emptyMsg = historyList.querySelector('.history-empty');
+    if (emptyMsg) emptyMsg.remove();
+
+    const time = new Date().toLocaleTimeString('en-US', { hour12: true, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    const pcr = data.pcr ? data.pcr.toFixed(2) : null;
+    const basis = data.basis ? data.basis.toFixed(1) : null;
+
+    // Create & Prepend UI
+    const item = createHistoryItem(signal, time, pcr, basis);
+    historyList.prepend(item);
+
+    // Limit to 5
+    if (historyList.children.length > 5) {
+        historyList.removeChild(historyList.lastElementChild);
+    }
+
+    // Save
+    saveHistory(signal, time, pcr, basis);
+}
+
+function saveHistory(signal, time, pcr, basis) {
+    try {
+        let items = [];
+        const saved = localStorage.getItem('scalp_signal_history');
+        if (saved) items = JSON.parse(saved);
+
+        items.unshift({ signal, timestamp: time, pcr, basis });
+        if (items.length > 5) items = items.slice(0, 5);
+
+        localStorage.setItem('scalp_signal_history', JSON.stringify(items));
+    } catch (e) { }
+}

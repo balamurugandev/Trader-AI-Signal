@@ -1006,17 +1006,29 @@ body {
 
 .scalp-legend-compact {
     display: flex;
-    flex-direction: column;
-    gap: 8px;
-    padding: 12px;
-    font-size: 0.8rem;
+    flex-wrap: nowrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 4px;
+    padding: 6px 8px;
+    font-size: 0.65rem;
     color: var(--text-muted);
+    background: rgba(255, 255, 255, 0.02);
+    border-radius: 6px;
+    margin-top: 8px;
+    overflow-x: auto;
+    scrollbar-width: none;
+}
+
+.scalp-legend-compact::-webkit-scrollbar {
+    display: none;
 }
 
 .s-legend-item {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 4px;
+    white-space: nowrap;
 }
 
 /* Adjusted Signal Box for Panel */
@@ -1306,6 +1318,91 @@ body {
 .ticker-value {
     color: var(--text-primary);
     font-family: var(--font-mono);
+}
+
+/* =============================================================================
+   SIGNAL HISTORY LOG
+   ============================================================================= */
+.signal-history-section {
+    margin-top: 16px;
+    padding-top: 12px;
+    border-top: 1px solid var(--border-color);
+}
+
+.history-title {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    margin-bottom: 8px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.signal-history-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    height: 240px;
+    /* Increased for more room */
+    overflow-y: auto;
+    scrollbar-width: none;
+    padding-right: 2px;
+}
+
+.signal-history-list::-webkit-scrollbar {
+    display: none;
+}
+
+.history-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: rgba(255, 255, 255, 0.03);
+    padding: 8px 10px;
+    border-radius: 6px;
+    border-left: 3px solid var(--text-muted);
+    font-family: var(--font-mono);
+    height: 40px;
+    flex-shrink: 0;
+}
+
+.history-item.call {
+    border-left-color: var(--accent-green);
+    background: rgba(0, 255, 136, 0.05);
+}
+
+.history-item.put {
+    border-left-color: var(--accent-red);
+    background: rgba(255, 69, 96, 0.05);
+}
+
+.history-item.trap {
+    border-left-color: var(--accent-yellow);
+    background: rgba(255, 170, 0, 0.05);
+}
+
+.h-time {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+}
+
+.h-signal {
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.h-details {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+}
+
+.history-empty {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    font-style: italic;
+    text-align: center;
+    padding: 8px;
 }
 
 .ticker-change {

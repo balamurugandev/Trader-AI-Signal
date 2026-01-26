@@ -183,7 +183,7 @@ async def websocket_endpoint(websocket: WebSocket):
 
             # Update History (Keep last 50)
             # FIX: app.js expects 'straddle' key, not 'price'
-            history_entry = {"time": time.strftime("%H:%M:%S"), "straddle": straddle}
+            history_entry = {"time": time.strftime("%I:%M:%S %p"), "straddle": straddle}
             if len(scalping_state["history"]) > 50:
                 scalping_state["history"].pop(0)
             scalping_state["history"].append(history_entry)
