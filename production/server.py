@@ -56,7 +56,7 @@ RSI_OVERSOLD = 30
 RSI_OVERBOUGHT = 70
 
 # Scalping Module Settings
-SCALPING_POLL_INTERVAL = 1  # seconds
+SCALPING_POLL_INTERVAL = 0.5  # Reduced to 0.5s to ensure reliable 1Hz updates (Global Standard)
 
 # =============================================================================
 # DATA CLASSES
