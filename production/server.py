@@ -693,28 +693,27 @@ def update_scalping_data():
             ce_ltp = ticker_data.get(atm_ce_token, {}).get('ltp') if atm_ce_token else None
             pe_ltp = ticker_data.get(atm_pe_token, {}).get('ltp') if atm_pe_token else None
             
-            # SMART API POLLING: Only fetch fresh data every 5 seconds
-            # Use cached/forward-filled data in between for 1Hz updates
-            # This prevents 3-4 second delays when API is slow (holidays/rate limits)
-            global last_api_fetch_time
-            if 'last_api_fetch_time' not in globals() or last_api_fetch_time is None:
-                last_api_fetch_time = 0
+            # STAGGERED POLLING (Round-Robin)
+            # Fetch 1 token every second to maintain 1Hz RTT updates and continuous data flow
+            # This is better than "Burst every 5s" as it prevents 4s latency freeze
+            global poll_counter
+            if 'poll_counter' not in globals(): poll_counter = 0
             
-            should_fetch_fresh_data = False
-            time_since_last_fetch = loop_start_time - last_api_fetch_time
-            if time_since_last_fetch >= 5.0:  # Fetch every 5 seconds
-                should_fetch_fresh_data = True
-                last_api_fetch_time = loop_start_time
+            token_types = ['fut', 'ce', 'pe']
+            target_type = token_types[poll_counter % 3]
+            poll_counter += 1
             
-            # If any data is missing from WS and it's time to fetch, get from API in parallel
             missing_tokens = []
-            if should_fetch_fresh_data:
-                if not fut_ltp and future_token: missing_tokens.append(('fut', future_symbol, future_token))
-                if not ce_ltp and atm_ce_token: missing_tokens.append(('ce', ce_symbol, atm_ce_token))
-                if not pe_ltp and atm_pe_token: missing_tokens.append(('pe', pe_symbol, atm_pe_token))
-            
+            # Only add the TARGET token to missing list (if not provided by WS)
+            if target_type == 'fut' and not fut_ltp and future_token: 
+                missing_tokens.append(('fut', future_symbol, future_token))
+            elif target_type == 'ce' and not ce_ltp and atm_ce_token: 
+                missing_tokens.append(('ce', ce_symbol, atm_ce_token))
+            elif target_type == 'pe' and not pe_ltp and atm_pe_token: 
+                missing_tokens.append(('pe', pe_symbol, atm_pe_token))
+
             if missing_tokens:
-                with ThreadPoolExecutor(max_workers=5) as executor:
+                with ThreadPoolExecutor(max_workers=3) as executor:
                     futures_map = {
                         item[0]: executor.submit(fetch_ltp, smart_api_global, "NFO", item[1], item[2]) 
                         for item in missing_tokens
@@ -735,12 +734,17 @@ def update_scalping_data():
                         if result:
                             pe_ltp = result
                             last_pe_price = result
+                            
+            # FORWARD FILL: Ensure we always have values for calculation
+            # If we didn't fetch it this tick, use the last known value
+            if not fut_ltp and last_future_price: fut_ltp = last_future_price
+            if not ce_ltp and last_ce_price: ce_ltp = last_ce_price
+            if not pe_ltp and last_pe_price: pe_ltp = last_pe_price
             
-            # Update RTT Latency (Stable Metric)
+            # Update RTT Latency (Updates every second now!)
             fetch_end_time = time.time()
-            if fut_ltp or ce_ltp or pe_ltp:
-                 last_tick_timestamp = time.time() # Keep timestamp for "Last Updated" logic if needed
-                 
+            # We check if we actually attempted a fetch (missing_tokens not empty)
+            if missing_tokens:
                  # Calculate RTT in MS
                  rtt_ms = (fetch_end_time - fetch_start_time) * 1000
                  

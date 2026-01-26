@@ -138,17 +138,19 @@
 - Keep `/production/*.log` clean to avoid confusion
 - Use descriptive log names during testing, delete after verification
 
-## Critical Timing Issue Fix
-**Problem**: Chart timestamps jumping by 4-5 seconds instead of 1 second
-**Root Cause**: API calls taking 3-4 seconds on holidays/weekends, blocking the loop
-**Failed Fix #1**: Compensated sleep at end of loop (doesn't help if work takes 4 seconds)
-**Correct Fix**: 
-```python
-# Only fetch fresh data every 5 seconds
-# Use cached/forward-filled data in between for 1Hz updates
-should_fetch_fresh_data = (time.time() - last_api_fetch_time) >= 5.0
-```
-**Key Insight**: Forward fill is not just for display - it's for **maintaining update frequency** when external APIs are slow. Fetch rarely, update frequently.
+## Latency Optimization Strategy (Staggered Polling)
+**Problem**: "Ping" latency indicator updated only every 5 seconds (burst polling), feeling laggy.
+**Old Fix**: Fetch all data every 5 seconds (caused 5-second latency freeze).
+**New Solution**: **Staggered Polling (Round-Robin)**.
+**Logic**:
+- Tick 1: Fetch Future Token (Latency check ✅)
+- Tick 2: Fetch CE Token (Latency check ✅)
+- Tick 3: Fetch PE Token (Latency check ✅)
+**Key Benefits**:
+1. **1Hz Latency Updates**: Fulfills Global Standards for responsiveness.
+2. **Smooth Data Flow**: New price data streams in constantly rather than in bursts.
+3. **Safe Rate Limiting**: Consumes only 1 request/sec (well below limit of 3/sec).
+4. **Improved Freshness**: Each token updates every 3 seconds (was 5s).
 
 ## Memory Leak Prevention Checklist
 **Problem**: App slowing down after 10-30 minutes of continuous operation
