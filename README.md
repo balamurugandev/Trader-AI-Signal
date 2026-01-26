@@ -1,6 +1,12 @@
-# 🚀 AI-Powered NIFTY 50 Scalping Dashboard
+# 🚀 Scalp Trader Pro (Previously AI-Powered Signal)
 
 A professional-grade, real-time web dashboard for scalping NIFTY 50 options. This tool interacts with Angel One's SmartAPI to calculate advanced metrics like **Synthetic Basis**, **Market Sentiment**, and **Straddle Decay** to generate high-probability trade signals.
+
+## 📱 Mobile & PWA Support (New in v2.0)
+- **Responsive Layout**: Optimized for Phones (OnePlus 13R) and Tablets (Xiaomi Pad 6).
+- **PWA Ready**: Add to Home Screen for a native app experience.
+- **Stacked View**: Clean single-column layout on mobile, 2-column on tablets.
+- **Touch-Friendly**: Larger buttons, scrolling ticker, and optimized charts.
 
 ---
 
@@ -42,8 +48,12 @@ python3 production/server.py
 ```bash
 python3 testing/test_server.py
 ```
-> **Open Test Dashboard:** [http://localhost:8001](http://localhost:8001)  
-> *Use `http://localhost:8001/control` to inject scenarios (e.g., Crash, Rally).*
+> **Open Test Dashboard:** [http://localhost:8001](http://localhost:8001)
+
+**Control Scenarios via URL:**
+- **Bull Run**: `http://localhost:8001/control?scenario=BULL_RUN&speed_ms=100`
+- **Bear Trap**: `http://localhost:8001/control?scenario=BEAR_TRAP&speed_ms=100`
+- **Budget Day**: `http://localhost:8001/control?scenario=BUDGET_DAY&regime=BUDGET_VOLATILITY`
 
 ---
 
@@ -60,6 +70,7 @@ python3 testing/test_server.py
   - **Synthetic Future Calculation**: `(ATM Strike + CE) - PE`.
   - **Straddle Trend**: Prevents trading into Theta Decay.
 - **Smart Filters**:
+  - **Trap Detection**: Identifies Bull/Bear traps using Price vs OI divergence.
   - **PCR Filter**: Avoids traps (e.g., Bull signal blocked if PCR < 0.6).
   - **Hysteresis**: Prevents ATM flicker when spot is at strike boundary.
 
