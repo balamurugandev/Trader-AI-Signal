@@ -287,3 +287,28 @@
 2. **Logo Size Explosion**
    - Forgot to add `.logo-image { width: 24px }` constraint
    - **Fix**: Always specify explicit dimensions for uploaded images
+
+---
+
+# 📜 Signal History & Caching (Jan 27, 2026)
+
+## Signal Logging Logic
+- **Goal**: Track last 5 signals without performance hit.
+- **Pattern**:
+  ```javascript
+  // Only log if state changes significantly
+  if (data.signal !== lastState && isMeaningful(data.signal)) {
+      prependToLog(data);
+      lastState = data.signal;
+  }
+  ```
+- **Constraint**: `historyList.children.length > 5` check to keep DOM light.
+
+## UI Layout Stability
+- **Problem**: Adding log items pushed layout down, causing jitter.
+- **Fix**: Used Fixed Height Container (`height: 220px`) with `overflow-y: auto`.
+- **Legend**: Switched to `flex-wrap: wrap` single-line layout to save vertical space.
+
+## Browser Caching Realization
+- **Issue**: Updates to `app.js` were not reflecting despite hard refresh.
+- **Fix**: **ALWAYS** verify the version query param `src="app.js?v=xyz"` matches the update. The browser aggressively caches static files served by FastAPI unless the URL changes.
