@@ -240,3 +240,50 @@
    - Create a `/test` directory separate from production.
    - Use standalone scripts (`test_scalping_logic.py`) to verify complex logic (straddle calc, forward fill).
    - **Benefit**: deployment confidence increased to 100% after passing 11/11 automated tests.
+
+---
+
+# 🎨 UI/UX & Branding Updates (Jan 26, 2026)
+
+## Rebranding: Scalp Trader Pro
+- **Logo**: Custom candlestick icon (purple/pink gradient)
+- **Font**: Inclusive Sans for logo text
+- **Title**: Renamed from "AI Powered Signal" to "Scalp Trader Pro"
+
+## CSS Improvements
+1. **Removed Neon Glows** - User reported eye strain from glowing text
+   - ❌ WRONG: `text-shadow: 0 0 10px rgba(0, 255, 136, 0.5)` (hurts eyes)
+   - ✅ RIGHT: `text-shadow: none` (clean matte finish)
+   
+2. **Restored Dynamic Color Coding**
+   - Bug: Accidentally removed `--accent-green` variable while fixing glows
+   - Fix: Always verify CSS variables aren't used elsewhere before removing
+   
+3. **Global Color Utilities**
+   - Added `.positive`/`.negative` classes with `!important` for universal override
+   - Works on any element for dynamic green/red coloring
+
+## Trap Signal Enhancements
+- **Before**: Generic "TRAP - Price Rising but Data Bearish"
+- **After**: Detailed with PCR value and Smart Money action:
+  ```
+  ⚠️ BULL TRAP! PCR=0.65 (LOW)
+  📈 Price Rising but Bearish OI
+  🎯 Smart Money SELLING
+  ```
+
+## Dev Server Testing Workflow
+1. Use `testing/test_server.py` on port 8001. for simulation
+2. Control scenarios via: `/control?scenario=BULL_RUN&speed_ms=100`
+3. Available scenarios: `BULL_RUN`, `BEAR_CRASH`, `SIDEWAYS`, `BUDGET_DAY`, `BULL_TRAP`, `BEAR_TRAP`
+4. Available regimes: `NORMAL`, `HIGH_VIX`, `LOW_VIX`, `BUDGET_VOLATILITY`
+
+## Bugs Found in Testing
+1. **Straddle Calculation Mismatch**
+   - Test server used `CE + PE` (sum)
+   - Production uses `(CE + PE) / 2` (average)
+   - **Fix**: Always check production code before writing test mocks
+   
+2. **Logo Size Explosion**
+   - Forgot to add `.logo-image { width: 24px }` constraint
+   - **Fix**: Always specify explicit dimensions for uploaded images
