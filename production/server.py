@@ -25,6 +25,7 @@ import os
 import logging
 from SmartApi import SmartConnect
 from SmartApi.smartWebSocketV2 import SmartWebSocketV2
+from logger import trade_logger  # Trade Logger Integration
 
 # Configure Logging
 logging.basicConfig(level=logging.INFO, format='%(levelname)s:     %(message)s')
@@ -365,7 +366,7 @@ def get_option_tokens(smart_api, spot_price: float) -> dict:
     - Uses this specific expiry for CE/PE selection
     """
     global scalping_status
-    from datetime import datetime
+    from datetime import datetime, timedelta, time as dt_time
     from concurrent.futures import ThreadPoolExecutor # For parallel API calls
     
     try:
@@ -373,7 +374,12 @@ def get_option_tokens(smart_api, spot_price: float) -> dict:
         
         # Round spot to nearest 50 for ATM strike
         atm_strike = int(round(spot_price / 50) * 50)
-        today = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+        
+        # 🟢 IST TIMEZONE FIX (UTC + 5:30)
+        # Ensure we always select expiry based on INDIAN STANDARD TIME
+        ist_now = datetime.utcnow() + timedelta(hours=5, minutes=30)
+        today = ist_now.replace(hour=0, minute=0, second=0, microsecond=0)
+        cutoff_time = dt_time(15, 30) # Market Close Check
         
         print(f"{'='*60}")
         print(f"🎯 SMART EXPIRY SELECTION")
@@ -413,12 +419,21 @@ def get_option_tokens(smart_api, spot_price: float) -> dict:
                     ts = item.get('tradingsymbol', '')
                     if ts.endswith('CE') or ts.endswith('PE'):
                         expiry = parse_expiry_from_symbol(ts)
-                        if expiry and expiry >= today:
-                            options.append({**item, 'expiry_date': expiry})
+                        if expiry:
+                            # 1. Base Check: Expiry must be >= Today
+                            if expiry >= today:
+                                # 2. Time Check: If Expiry is TODAY, check if market is closed
+                                if expiry == today and ist_now.time() > cutoff_time:
+                                    print(f"Skipping TODAY'S expiry {ts} (Market Closed)")
+                                    continue
+                                options.append({**item, 'expiry_date': expiry})
                     elif ts.endswith('FUT') and len(ts) <= 17:  # Simple future, not spread
                         expiry = parse_expiry_from_symbol(ts)
-                        if expiry and expiry >= today:
-                            futures.append({**item, 'expiry_date': expiry})
+                        if expiry:
+                             if expiry >= today:
+                                if expiry == today and ist_now.time() > cutoff_time:
+                                    continue
+                                futures.append({**item, 'expiry_date': expiry})
                 
                 print(f"📋 Valid options: {len(options)}, Valid futures: {len(futures)}")
                 
@@ -615,11 +630,13 @@ def update_scalping_data():
     current_ce_symbol = ce_symbol  # Set global for UI
     current_pe_symbol = pe_symbol  # Set global for UI
     current_expiry = tokens.get('expiry_date')
+    last_token_refresh_date = datetime.utcnow().date() # Track refresh date for rollover
     
     print(f"📈 Scalping ready: ATM={current_atm_strike}, Expiry={current_expiry}")
     
     last_straddle_prices = deque(maxlen=5)  # For trend detection
     raw_basis_history = deque(maxlen=20) # For Z-Score calculation
+    last_straddle_price = None # CRITICAL FIX: Initialize for forward fill
     atm_shift_count = 0
     poll_count = 0
     
@@ -654,14 +671,25 @@ def update_scalping_data():
                 if dist >= 40:
                     should_switch = True
             
-            # Trigger refresh when ATM changes based on Hysteresis
+            # DATE ROLLOVER CHECK (Fix for Overnight Server Run)
+            # If date changed since last token fetch, force refresh to pick next expiry
+            current_date = datetime.utcnow().date()
+            if current_date > last_token_refresh_date:
+                 print("\n📅 DATE CHANGED! Refreshing tokens for new expiry...")
+                 should_switch = True
+                 last_token_refresh_date = current_date
+
+            # Trigger refresh when ATM changes based on Hysteresis OR Date Change
             if should_switch:
                 current_atm = new_atm
-                atm_shift_count += 1
-                print(f"\n{'='*60}")
-                print(f"🔄 DYNAMIC ATM SHIFT #{atm_shift_count}")
-                print(f"   Spot: ₹{spot:.2f}")
-                print(f"   Old ATM: {current_atm_strike} -> New ATM: {new_atm}")
+                # Only increment count if it's an ATM shift, not just date refresh
+                if new_atm != current_atm_strike: 
+                    atm_shift_count += 1
+                    print(f"\n{'='*60}")
+                    print(f"🔄 DYNAMIC ATM SHIFT #{atm_shift_count}")
+                    print(f"   Spot: ₹{spot:.2f}")
+                    print(f"   Old ATM: {current_atm_strike} -> New ATM: {new_atm}")
+                
                 print(f"   Unsubscribing from: CE={ce_symbol}, PE={pe_symbol}")
                 print(f"{'='*60}")
                 
@@ -674,12 +702,14 @@ def update_scalping_data():
                 future_symbol = tokens.get('future_symbol', '')
                 ce_symbol = tokens.get('ce_symbol', '')
                 pe_symbol = tokens.get('pe_symbol', '')
+                current_expiry = tokens.get('expiry_date') # Update expiry global
                 current_atm = new_atm
                 
                 # Clear straddle history on ATM change
-                last_straddle_prices.clear()
+                if new_atm != current_atm_strike:
+                    last_straddle_prices.clear()
                 
-                print(f"✅ Subscribed to new ATM: CE={ce_symbol}, PE={pe_symbol}")
+                print(f"✅ Subscribed to new ATM: CE={ce_symbol}, PE={pe_symbol}, Expiry={current_expiry}")
             else:
                 current_atm = current_atm_strike
             
@@ -907,6 +937,21 @@ def update_scalping_data():
                     scalping_status = "Tokens found, awaiting data..."
                 else:
                     scalping_status = "No tokens available"
+                
+                # LOG VALID TRADES (Fire-and-Forget)
+                # LOG VALID TRADES (Fire-and-Forget)
+                if scalping_signal not in ["WAIT", "NEUTRAL"]:
+                    trade_logger.log_trade(
+                        spot=spot,
+                        basis=real_basis,
+                        pcr=pcr_value if pcr_value else 0.0,
+                        signal=scalping_signal,
+                        trap_reason=trade_suggestion,
+                        ce_symbol=current_ce_symbol,
+                        pe_symbol=current_pe_symbol,
+                        ce_price=ce_ltp,
+                        pe_price=pe_ltp
+                    )
                 
                 # Append to history with enhanced data
                 scalping_history.append({
@@ -1158,6 +1203,31 @@ async def get_scalper_data():
             "velocity": points_per_sec, # Velocity in points/sec
             "history": list(scalping_history)[-50:]
         }
+
+
+@app.get("/api/logs")
+async def get_trade_logs(limit: int = 50):
+    """
+    Fetch recent trade logs from Supabase.
+    CRITICAL: Runs in a separate thread to prevent blocking the WebSocket loop.
+    """
+    try:
+        if not trade_logger.is_active or not trade_logger.supabase:
+            return {"error": "Logger inactive or Supabase not connected"}
+
+        # Run blocking Supabase query in a thread
+        def fetch_query():
+            return trade_logger.supabase.table('trade_logs') \
+                .select("*") \
+                .order('timestamp', desc=True) \
+                .limit(limit) \
+                .execute()
+
+        response = await asyncio.to_thread(fetch_query)
+        return response.data
+    except Exception as e:
+        print(f"❌ Error fetching logs: {e}")
+        return {"error": str(e)}
 
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):

@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trade Logs | Scalping Dashboard</title>
+    <style>
+        :root {
+            --bg-color: #0d1117;
+            --card-bg: #161b22;
+            --text-color: #c9d1d9;
+            --accent-color: #58a6ff;
+            --border-color: #30363d;
+            --success-color: #238636;
+            --danger-color: #da3633;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        h1 {
+            margin: 0;
+            font-size: 1.5rem;
+        }
+
+        .btn {
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            color: var(--text-color);
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            text-decoration: none;
+            font-size: 0.9rem;
+            transition: 0.2s;
+        }
+
+        .btn:hover {
+            background-color: var(--border-color);
+        }
+
+        .btn-primary {
+            background-color: var(--success-color);
+            border: none;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            opacity: 0.9;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background-color: var(--card-bg);
+            border-radius: 6px;
+            overflow: hidden;
+        }
+
+        th,
+        td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+            font-size: 0.9rem;
+        }
+
+        th {
+            background-color: #21262d;
+            font-weight: 600;
+            color: var(--accent-color);
+        }
+
+        tr:hover {
+            background-color: #21262d;
+        }
+
+        .badge {
+            padding: 4px 8px;
+            border-radius: 10px;
+            font-size: 0.75rem;
+            font-weight: bold;
+        }
+
+        .badge-call {
+            background-color: rgba(35, 134, 54, 0.2);
+            color: #3fb950;
+            border: 1px solid #238636;
+        }
+
+        .badge-put {
+            background-color: rgba(218, 54, 51, 0.2);
+            color: #f85149;
+            border: 1px solid #da3633;
+        }
+
+        .badge-trap {
+            background-color: rgba(210, 153, 34, 0.2);
+            color: #d29922;
+            border: 1px solid #d29922;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #8b949e;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="header">
+        <h1>📜 Trade Signal Logs</h1>
+        <div>
+            <button onclick="fetchLogs()" class="btn btn-primary">Refresh</button>
+            <a href="/" class="btn">Back to Dashboard</a>
+        </div>
+    </div>
+
+    <div id="logs-container">
+        <table id="logs-table">
+            <thead>
+                <tr>
+                    <th>Time</th>
+                    <th>Signal</th>
+                    <th>Detail (Symbol & Price)</th>
+                    <th>Spot Price</th>
+                    <th>PCR</th>
+                    <th>Trap Reason / Notes</th>
+                </tr>
+            </thead>
+            <tbody id="logs-body">
+                <!-- Rows will be injected here -->
+            </tbody>
+        </table>
+        <div id="loading" class="loading">Loading data...</div>
+    </div>
+
+    <script>
+        async function fetchLogs() {
+            const tbody = document.getElementById('logs-body');
+            const loading = document.getElementById('loading');
+
+            loading.style.display = 'block';
+            tbody.innerHTML = ''; // Clear existing
+
+            try {
+                const response = await fetch('/api/logs?limit=100');
+                const data = await response.json();
+
+                loading.style.display = 'none';
+
+                if (data.error) {
+                    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:red;">Error: ${data.error}</td></tr>`;
+                    return;
+                }
+
+                if (data.length === 0) {
+                    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;">No logs found.</td></tr>`;
+                    return;
+                }
+
+                // Helper for symbol format
+                const formatSymbol = (symbol) => {
+                    if (!symbol || symbol.length < 10) return symbol;
+                    const match = symbol.match(/NIFTY(\d{2})([A-Z]{3})(\d{2})(\d+)(CE|PE)/);
+                    if (match) {
+                        const [, day, month, year, strike, type] = match;
+                        return `${day} ${month} ${strike}${type}`;
+                    }
+                    return symbol;
+                };
+
+                data.forEach(log => {
+                    const row = document.createElement('tr');
+
+                    // Format Timestamp
+                    const date = new Date(log.timestamp);
+                    const timeStr = date.toLocaleTimeString('en-US', { hour12: true });
+                    const dateStr = date.toLocaleDateString('en-GB');
+
+                    // Badge Logic
+                    let badgeClass = '';
+                    if (log.signal.includes('CALL')) badgeClass = 'badge-call';
+                    else if (log.signal.includes('PUT')) badgeClass = 'badge-put';
+                    else badgeClass = 'badge-trap';
+
+                    // Detail Column Logic
+                    let detailHtml = '';
+
+                    // Check for Option Data Availability (Priority Display)
+                    if (log.ce_symbol || log.pe_symbol) {
+                        let symbolStr = '';
+                        let priceStr = '';
+                        let colorStyle = '#fff'; // Default white
+
+                        if (log.signal.includes('PUT')) {
+                            // Focus on PE
+                            symbolStr = log.pe_symbol ? formatSymbol(log.pe_symbol) : (log.ce_symbol ? formatSymbol(log.ce_symbol) : 'ATM PE');
+                            priceStr = log.pe_price ? `₹${log.pe_price.toFixed(2)}` : (log.ce_price ? `₹${log.ce_price.toFixed(2)}` : '--');
+                            colorStyle = '#f85149'; // Red for PUT
+                        } else {
+                            // Focus on CE (Default for CALL or others)
+                            symbolStr = log.ce_symbol ? formatSymbol(log.ce_symbol) : (log.pe_symbol ? formatSymbol(log.pe_symbol) : 'ATM CE');
+                            priceStr = log.ce_price ? `₹${log.ce_price.toFixed(2)}` : (log.pe_price ? `₹${log.pe_price.toFixed(2)}` : '--');
+                            colorStyle = '#3fb950'; // Green for CALL/Others
+                        }
+
+                        detailHtml = `<span style="color:#fff; font-weight:500;">${symbolStr}</span> <span style="opacity:0.5; margin:0 5px;">-</span> <span style="color:${colorStyle}; font-weight:bold;">${priceStr}</span>`;
+                    } else {
+                        // Fallback: Show Basis if no option data
+                        const basisVal = log.basis !== null ? parseFloat(log.basis).toFixed(2) : '--';
+                        const basisCol = log.basis > 0 ? '#3fb950' : '#f85149';
+                        detailHtml = `<span style="opacity:0.7">Basis:</span> <span style="color:${basisCol}">${basisVal}</span>`;
+                    }
+
+                    row.innerHTML = `
+                        <td>${dateStr} <span style="color:#8b949e">${timeStr}</span></td>
+                        <td><span class="badge ${badgeClass}">${log.signal}</span></td>
+                        <td>${detailHtml}</td>
+                        <td>${parseFloat(log.spot_price).toFixed(2)}</td>
+                        <td>${parseFloat(log.pcr).toFixed(2)}</td>
+                        <td style="color:#8b949e; font-style:italic;">${log.trap_reason || '-'}</td>
+                    `;
+                    tbody.appendChild(row);
+                });
+            } catch (err) {
+                loading.style.display = 'none';
+                console.error(err);
+                tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:red;">Failed to fetch logs. Is server running?</td></tr>`;
+            }
+        }
+
+        // Auto load on start
+        fetchLogs();
+    </script>
+
+</body>
+
+</html>

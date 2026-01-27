@@ -646,22 +646,6 @@ function updateScalperUI(data) {
     const ceStrike = document.getElementById('ce-strike');
     const peStrike = document.getElementById('pe-strike');
 
-    // Format symbol: "NIFTY27JAN2525050CE" -> "27 Jan 25050CE"
-    const formatSymbol = (symbol) => {
-        if (!symbol || symbol.length < 10) return symbol;
-        // Extract date and strike from symbol like "NIFTY27JAN2525050CE"
-        const match = symbol.match(/NIFTY(\d{2})([A-Z]{3})(\d{2})(\d+)(CE|PE)/);
-        if (match) {
-            const [, day, month, year, strike, type] = match;
-            const monthMap = {
-                JAN: 'Jan', FEB: 'Feb', MAR: 'Mar', APR: 'Apr', MAY: 'May', JUN: 'Jun',
-                JUL: 'Jul', AUG: 'Aug', SEP: 'Sep', OCT: 'Oct', NOV: 'Nov', DEC: 'Dec'
-            };
-            return `${day} ${monthMap[month] || month} ${strike}${type}`;
-        }
-        return symbol;
-    };
-
     if (data.ce_symbol && ceStrike) {
         ceStrike.textContent = formatSymbol(data.ce_symbol);
     } else if (data.atm_strike && ceStrike) {
@@ -859,6 +843,23 @@ document.addEventListener('DOMContentLoaded', () => {
     loadSignalHistory(); // Load saved history
 });
 
+// Format symbol: "NIFTY27JAN2525050CE" -> "27 Jan 25050CE"
+// Moved to global scope for reuse in history log
+const formatSymbol = (symbol) => {
+    if (!symbol || symbol.length < 10) return symbol;
+    // Extract date and strike from symbol like "NIFTY27JAN2525050CE"
+    const match = symbol.match(/NIFTY(\d{2})([A-Z]{3})(\d{2})(\d+)(CE|PE)/);
+    if (match) {
+        const [, day, month, year, strike, type] = match;
+        const monthMap = {
+            JAN: 'Jan', FEB: 'Feb', MAR: 'Mar', APR: 'Apr', MAY: 'May', JUN: 'Jun',
+            JUL: 'Jul', AUG: 'Aug', SEP: 'Sep', OCT: 'Oct', NOV: 'Nov', DEC: 'Dec'
+        };
+        return `${day} ${monthMap[month] || month} ${strike}${type}`;
+    }
+    return symbol;
+};
+
 function loadSignalHistory() {
     const historyList = document.getElementById('signal-history-list');
     if (!historyList) return;
@@ -878,7 +879,7 @@ function loadSignalHistory() {
                 // OR use appendChild. Since list is empty (except empty msg), if we append [newest, oldest], newest is first. Correct.
 
                 items.forEach(data => {
-                    const item = createHistoryItem(data.signal, data.timestamp, data.pcr, data.basis);
+                    const item = createHistoryItem(data.signal, data.timestamp, data);
                     historyList.appendChild(item);
                 });
 
@@ -891,7 +892,7 @@ function loadSignalHistory() {
     }
 }
 
-function createHistoryItem(signal, time, pcr, basis) {
+function createHistoryItem(signal, time, data) {
     const item = document.createElement('div');
     const typeClass = signal === 'BUY CALL' ? 'call' :
         signal === 'BUY PUT' ? 'put' :
@@ -903,9 +904,31 @@ function createHistoryItem(signal, time, pcr, basis) {
         signal === 'BUY PUT' ? '🔴' :
             '⚠️';
 
-    // Ensure pcr/basis are strings or handled
-    const pcrStr = pcr ? `PCR: ${pcr}` : '';
-    const basisStr = basis ? `Bias: ${basis}` : '';
+    // Dynamic Details Logic
+    let detailsHtml = '';
+
+    if (signal === 'BUY CALL') {
+        // Show Full Strike - Price
+        // e.g., "27 Jan 25050CE - ₹103.50"
+        const symbol = data.ce_symbol ? formatSymbol(data.ce_symbol) : 'ATM CE';
+        const price = data.ce_price ? `₹${data.ce_price.toFixed(2)}` : '--';
+        detailsHtml = `<span style="color:#fff; font-weight:500;">${symbol}</span> <span style="opacity:0.6; margin:0 5px;">-</span> <span style="color:#00E396;">${price}</span>`;
+    } else if (signal === 'BUY PUT') {
+        const symbol = data.pe_symbol ? formatSymbol(data.pe_symbol) : 'ATM PE';
+        const price = data.pe_price ? `₹${data.pe_price.toFixed(2)}` : '--';
+        detailsHtml = `<span style="color:#fff; font-weight:500;">${symbol}</span> <span style="opacity:0.6; margin:0 5px;">-</span> <span style="color:#FF4560;">${price}</span>`;
+    } else if (signal === 'TRAP') {
+        // Keep PCR/Bias for TRAP diagnosis if available, or just "Trap Detected"
+        // User asked to remove PCR/Bias generally, but maybe useful here?
+        // Let's stick to minimal.
+        const pcrStr = data.pcr ? `PCR: ${data.pcr}` : '';
+        detailsHtml = `<span style="color:#ffaa00;">Trap Detected</span> ${pcrStr ? `<span style="opacity:0.5; font-size:0.8em; margin-left:5px;">(${pcrStr})</span>` : ''}`;
+    } else {
+        // Fallback/Legacy
+        const pcrStr = data.pcr ? `PCR: ${data.pcr}` : '';
+        const basisStr = data.basis ? `Bias: ${data.basis}` : '';
+        detailsHtml = `${pcrStr} <span style="opacity:0.3">|</span> ${basisStr}`;
+    }
 
     item.innerHTML = `
         <div class="h-left" style="display:flex; align-items:center; gap:8px;">
@@ -913,7 +936,7 @@ function createHistoryItem(signal, time, pcr, basis) {
             <div class="h-signal" style="font-weight:700;">${icon} ${signal}</div>
         </div>
         <div class="h-details">
-            ${pcrStr} <span style="opacity:0.3">|</span> ${basisStr}
+            ${detailsHtml}
         </div>
     `;
     return item;
@@ -928,11 +951,9 @@ function updateSignalHistory(signal, data) {
     if (emptyMsg) emptyMsg.remove();
 
     const time = new Date().toLocaleTimeString('en-US', { hour12: true, hour: '2-digit', minute: '2-digit', second: '2-digit' });
-    const pcr = data.pcr ? data.pcr.toFixed(2) : null;
-    const basis = data.basis ? data.basis.toFixed(1) : null;
 
-    // Create & Prepend UI
-    const item = createHistoryItem(signal, time, pcr, basis);
+    // Create & Prepend UI (Pass full data for extracting prices/symbols)
+    const item = createHistoryItem(signal, time, data);
     historyList.prepend(item);
 
     // Limit to 5
@@ -941,16 +962,28 @@ function updateSignalHistory(signal, data) {
     }
 
     // Save
-    saveHistory(signal, time, pcr, basis);
+    saveHistory(signal, time, data);
 }
 
-function saveHistory(signal, time, pcr, basis) {
+function saveHistory(signal, time, data) {
     try {
         let items = [];
         const saved = localStorage.getItem('scalp_signal_history');
         if (saved) items = JSON.parse(saved);
 
-        items.unshift({ signal, timestamp: time, pcr, basis });
+        // Store minimal required data to save space
+        const entry = {
+            signal,
+            timestamp: time,
+            pcr: data.pcr ? data.pcr.toFixed(2) : null,
+            basis: data.basis ? data.basis.toFixed(1) : null,
+            ce_symbol: data.ce_symbol,
+            pe_symbol: data.pe_symbol,
+            ce_price: data.ce_price,
+            pe_price: data.pe_price
+        };
+
+        items.unshift(entry);
         if (items.length > 5) items = items.slice(0, 5);
 
         localStorage.setItem('scalp_signal_history', JSON.stringify(items));

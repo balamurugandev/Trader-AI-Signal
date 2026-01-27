@@ -230,7 +230,7 @@ async def websocket_endpoint(websocket: WebSocket):
                      "banknifty": {"price": price * 2.1, "change": 0, "p_change": 0}
                 }
             }
-            
+
             # 4. Stream
             await websocket.send_json(payload)
             

@@ -7,3 +7,7 @@ logzero>=1.7.0
 python-dotenv>=1.0.0
 fastapi>=0.109.0
 uvicorn[standard]>=0.27.0
+supabase
+python-dotenv
+supabase
+python-dotenv
