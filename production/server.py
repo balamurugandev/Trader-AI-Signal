@@ -549,8 +549,9 @@ def fetch_oi_data(smart_api):
                 
                 try:
                     # Fetch Quotes
-                    ce_quote = smart_api.getQuote("NFO", current_ce_symbol, atm_ce_token)
-                    pe_quote = smart_api.getQuote("NFO", current_pe_symbol, atm_pe_token)
+                    # USAGE: getOIData(exchange, symbol, token) - Found via inspection
+                    ce_quote = smart_api.getOIData("NFO", current_ce_symbol, atm_ce_token)
+                    pe_quote = smart_api.getOIData("NFO", current_pe_symbol, atm_pe_token)
                     
                     # Debug: Print keys if first run or error
                     # print(f"DEBUG CE QUOTE KEYS: {ce_quote['data'].keys() if ce_quote and 'data' in ce_quote else 'No Data'}")
@@ -580,11 +581,26 @@ def fetch_oi_data(smart_api):
                         # Log why it failed to help debugging
                         keys_found = ce_quote['data'].keys() if ce_quote and 'data' in ce_quote else "None"
                         print(f"⚠️ Zero CE OI for {current_ce_symbol}. Keys found: {list(keys_found)}")
-                        # Keep previous pcr_value (don't reset to 1.0 blindly if we have a stale valid one?)
-                        # But if initialized to 1.0, it stays 1.0.
+                    
+                    # DEBUG: Dump Raw Response to File for AI Analysis
+                    try:
+                        debug_dump = {
+                            "timestamp": datetime.now().isoformat(),
+                            "ce_symbol": current_ce_symbol,
+                            "ce_raw": ce_quote,
+                            "pe_raw": pe_quote
+                        }
+                        with open("production/static/oi_debug.json", "w") as f:
+                            json.dump(debug_dump, f, indent=2, default=str)
+                    except Exception as dx:
+                        print(f"Debug write failed: {dx}")
                         
                 except Exception as api_err:
                     print(f"⚠️ OI API Error: {api_err}")
+                    if "getQuote" in str(api_err):
+                         # List all methods to find the right one
+                         methods = [m for m in dir(smart_api) if not m.startswith('_')]
+                         print(f"🔍 AVAILABLE METHODS: {methods}")
             else:
                pass
             
