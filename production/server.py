@@ -536,49 +536,60 @@ def fetch_oi_data(smart_api):
     Fetches REAL-TIME OI for ATM CE and PE tokens to calculate PCR.
     Runs every 30 seconds to save bandwidth.
     """
-    global pcr_value, is_trap, atm_ce_token, atm_pe_token
+    global pcr_value, is_trap, current_ce_symbol, current_pe_symbol
     print("🛡️ OI Trap Filter thread started (Live PCR)")
     
     while True:
         try:
-            if atm_ce_token and atm_pe_token and smart_api:
-                # Use quote() to get OI data if ltpData doesn't provide it
-                # Fallback: Many APIs return OI in getQuote or similar
-                # For Angel One SmartApi, we try getQuote for full depth
+            # Check if we have active symbols to fetch OI for
+            if 'current_ce_symbol' in globals() and current_ce_symbol and \
+               'current_pe_symbol' in globals() and current_pe_symbol and \
+               smart_api:
                 
                 try:
-                    # CE Quote
-                    ce_quote = smart_api.getLTP("NFO", tokens['ce_symbol'], atm_ce_token) if 'tokens' in locals() else None 
-                    # Wait, we need Symbol AND Token. 'tokens' is local to other func.
-                    # We rely on globals atm_ce_token. But we need trading symbol for getQuote?
-                    # fetch_ltp uses ltpData. Let's see if we can get OI from candle data for today?
-                    # Safest: Use getCandleData for today "ONE_DAY" and get last candle's OI?
-                    # Or check ltpData response?
+                    # Fetch Quotes for full depth (includes OI)
+                    # Note: getQuote provides 'oi' field in the data
+                    ce_quote = smart_api.getQuote("NFO", current_ce_symbol)
+                    pe_quote = smart_api.getQuote("NFO", current_pe_symbol)
                     
-                    # SIMPLER APPROACH: If we can't easily get full Option Chain without heavy API calls,
-                    # we will enable the V6 Simulation Logic but fed by Real Price Action as a proxy if OI fails.
-                    # BUT user wants REAL OI.
+                    ce_oi = 0
+                    pe_oi = 0
                     
-                    # Assuming we can't easily get OI without symbol names (which are local).
-                    # Let's SKIP OI fetch here if we don't have symbols.
+                    if ce_quote and ce_quote.get('status') and ce_quote.get('data'):
+                        # Angel One returns OI as 'oi' (sometimes string)
+                        ce_oi = float(ce_quote['data'].get('oi', 0))
+                        
+                    if pe_quote and pe_quote.get('status') and pe_quote.get('data'):
+                        pe_oi = float(pe_quote['data'].get('oi', 0))
                     
-                    # ACTUALLY, we can just default PCR to a safe neutral 1.0 if fetch fails,
-                    # but logic below attempts to capture Trend.
-                    
-                    # For now, keep as 1.0 to avoid breaking Prod with untestable API calls
-                    # UNLESS we are sure about API. 
-                    pass
-                except:
+                    if ce_oi > 0:
+                        raw_pcr = pe_oi / ce_oi
+                        pcr_value = round(raw_pcr, 2)
+                        
+                        # Trap Check: Example logic
+                        # If PCR is extremely high (>1.5) but Price falling -> Trap
+                        # If PCR extremely low (<0.6) but Price rising -> Trap
+                        is_trap = False # Reset
+                        if pcr_value > 2.0: # Extreme Bullish Warning
+                             is_trap = True
+                        elif pcr_value < 0.5: # Extreme Bearish Warning
+                             is_trap = True
+                             
+                        # print(f"🛡️ Valid IO update: CE_OI={ce_oi}, PE_OI={pe_oi} => PCR={pcr_value}")
+                    else:
+                        # Fallback if no CE OI (e.g., illiquid or error)
+                        pcr_value = 1.0
+                        
+                except Exception as api_err:
+                    print(f"⚠️ OI API Error: {api_err}")
                     pass
 
-            # Placeholder remains 1.0 until we confirm API endpoint for OI
-            # To respect "Professional" upgrade, we will use Price Trend as proxy for PCR 
-            # if we can't get real OI (Trend Following PCR).
-            # If Straddle is RISING, PCR likely expanding in direction of trend.
+            else:
+               # No symbols yet, wait
+               pass
             
-            pcr_value = 1.0 
+            time.sleep(10) # Poll every 10s (increased frequency for responsiveness)
             
-            time.sleep(30)
         except Exception as e:
             print(f"⚠️ OI Fetch error: {e}")
             time.sleep(30)
