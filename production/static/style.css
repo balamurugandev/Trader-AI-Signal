@@ -643,6 +643,37 @@ body {
     align-items: stretch;
 }
 
+/* Responsive Rules for Scalping Grid */
+@media (max-width: 1200px) {
+    .scalping-grid {
+        grid-template-columns: 1fr 1fr; /* 2 Columns */
+        grid-template-areas: 
+            "data signals"
+            "chart chart";
+    }
+
+    .scalping-data-panel { grid-area: data; }
+    .scalping-signal-panel { grid-area: signals; }
+    .scalping-chart-panel { 
+        grid-area: chart; 
+        min-height: 400px;
+    }
+}
+
+@media (max-width: 768px) {
+    .scalping-grid {
+        grid-template-columns: 1fr; /* 1 Column */
+        grid-template-areas: 
+            "data"
+            "chart"
+            "signals";
+    }
+    
+    .scalping-chart-panel { 
+        min-height: 350px;
+    }
+}
+
 .scalping-data-panel {
     display: flex;
     flex-direction: column;
