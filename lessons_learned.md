@@ -346,3 +346,4 @@
 - **Problem**: Index Ticker "Day Change" values were static/inaccurate because the API doesn't provide them in the lightweight stream.
 - **Solution**: Removed Change/Percentage from the ticker. Now displays only **Name** and **Price** for a cleaner look.
 - **Optimization**: Removed `NIFTY SMALLCAP` to declutter the bar, updated grid to 5 columns for perfect spacing.
+- **Aesthetics**: Switched ticker font from Monospace/Bold to `Inter` (Regular/Medium) and Centered alignment to match modern UI references.

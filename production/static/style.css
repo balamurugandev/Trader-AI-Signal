@@ -1332,16 +1332,19 @@ body {
 
 .ticker-item {
     display: flex;
-    justify-content: space-between;
-    /* Spread content inside item */
+    justify-content: center;
+    /* Center content as requested */
     align-items: center;
+    gap: 12px;
+    /* Space between Name and Price */
     padding: 12px 16px;
     background: rgba(255, 255, 255, 0.03);
     border: 1px solid rgba(255, 255, 255, 0.05);
-    /* Subtle border for structure */
     border-radius: 8px;
-    font-size: 0.9rem;
-    font-weight: 600;
+    font-size: 0.95rem;
+    /* Slightly Adjust base size */
+    font-weight: 500;
+    /* Reduced from 600 (Bold) to Medium */
     transition: background 0.2s ease;
 }
 
@@ -1350,15 +1353,23 @@ body {
 }
 
 .ticker-name {
-    color: var(--text-secondary);
+    color: var(--text-muted);
+    /* More subtle color */
     text-transform: uppercase;
-    font-size: 0.8rem;
+    font-size: 0.9rem;
+    /* Match reference size balance */
+    font-weight: 500;
+    /* Not bold */
     letter-spacing: 0.5px;
 }
 
 .ticker-value {
     color: var(--text-primary);
-    font-family: var(--font-mono);
+    font-family: 'Inter', sans-serif;
+    /* User liked the reference font (likely Inter) */
+    font-weight: 400;
+    /* Regular weight */
+    font-size: 1.0rem;
 }
 
 /* =============================================================================
