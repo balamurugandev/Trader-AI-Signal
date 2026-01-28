@@ -1071,13 +1071,7 @@ body {
     white-space: nowrap;
 }
 
-/* Adjusted Signal Box for Panel */
-.scalping-signal-box {
-    /* Existing style reuse, but ensuring it fits panel */
-    padding: 24px;
-    flex: 1;
-    /* Grow to fill space */
-}
+
 
 
 /* Signal Legend */
