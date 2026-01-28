@@ -10,8 +10,8 @@
 
 .ticker-item {
     display: flex;
-    justify-content: flex-start;
-    /* Pack items left */
+    justify-content: center;
+    /* Center align */
     align-items: center;
     gap: 8px;
     /* Strict 8px gap matching reference */
@@ -31,12 +31,13 @@
 }
 
 .ticker-name {
-    color: var(--text-primary);
+    color: var(--text-muted);
     /* Darker/Stronger */
     text-transform: uppercase;
     font-size: 0.85rem;
+    font-family: 'Inter', sans-serif;
     /* Larger Name */
-    font-weight: 700;
+    font-weight: 500;
     letter-spacing: 0.5px;
     margin-right: 4px;
     /* Tiny separation */
@@ -44,10 +45,10 @@
 
 .ticker-value {
     color: var(--text-primary);
-    font-family: var(--font-main);
-    font-size: 0.9rem;
+    font-family: 'Inter', sans-serif;
+    font-size: 0.95rem;
     /* Smaller Price */
-    font-weight: 500;
+    font-weight: 400;
     font-variant-numeric: tabular-nums;
 }
 

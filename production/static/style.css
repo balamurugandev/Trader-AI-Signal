@@ -1332,7 +1332,10 @@ body {
 
 .ticker-item {
     display: flex;
+    width: 100%;
+    /* Ensure full width */
     justify-content: center;
+    /* Force center */
     /* Center content as requested */
     align-items: center;
     gap: 12px;
