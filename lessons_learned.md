@@ -312,3 +312,23 @@
 ## Browser Caching Realization
 - **Issue**: Updates to `app.js` were not reflecting despite hard refresh.
 - **Fix**: **ALWAYS** verify the version query param `src="app.js?v=xyz"` matches the update. The browser aggressively caches static files served by FastAPI unless the URL changes.
+
+## UI Stability & Layout (Jan 28 2026)
+1. **Graph Sizing and Grid Balance**:
+   - **Problem:** The chart became too wide and "unevenly sized" relative to side panels.
+   - **Solution:**
+     - **Constraint:** `height: 340px` (Fixed) prevents vertical growth/jumping.
+     - **Balance:** `grid-template-columns: 1fr 1.75fr 1fr` ensures the graph is the focal point (~46%) without overwhelming the UI.
+     - **Avoid Borders:** `max-width: 95vw` (Full width) is preferred over `1800px` to avoid "wasted space" on sides.
+
+2. **Accidental Deletions:**
+   - **Lesson:** When bulk editing large CSS files, always verify file size/line count before committing. We accidentally wiped content and had to `git checkout` to restore.
+
+## Data Accuracy & Features (Jan 28 2026)
+1. **Supabase Date Filtering**:
+   - **Pattern:** Use `gte` (start of day) and `lte` (end of day) on standard ISO timestamps.
+   - **Performance:** Filter at the Database level, not Application level.
+
+2. **Global State Synchronization**:
+   - **Bug:** `current_ce_symbol` wasn't updating globally, causing mismatched labels.
+   - **Fix:** Explicitly update global tracking variables immediately after fetching new tokens.
