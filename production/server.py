@@ -26,6 +26,9 @@ import logging
 from SmartApi import SmartConnect
 from SmartApi.smartWebSocketV2 import SmartWebSocketV2
 from logger import trade_logger  # Trade Logger Integration
+from news_engine import start_news_engine, latest_news_str  # News Ticker Integration
+import news_engine # To access the global variable dynamically
+
 
 # Configure Logging
 logging.basicConfig(level=logging.INFO, format='%(levelname)s:     %(message)s')
@@ -1387,7 +1390,10 @@ async def websocket_endpoint(websocket: WebSocket):
                     "tickers": {
                         k: ticker_data.get(k, {"price": 0.0, "change": 0.0, "p_change": 0.0}) 
                         for k in ["nifty", "sensex", "banknifty", "midcpnifty", "niftysmallcap", "indiavix"]
-                    }
+                    },
+                    # vvv NEWS ENGINE INTEGRATION vvv
+                    "news": news_engine.latest_news_str
+                    # ^^^ NEWS ENGINE INTEGRATION ^^^
                 }
             await websocket.send_json(data)
             await asyncio.sleep(0.1)  # 100ms update
@@ -1429,6 +1435,9 @@ def on_open(ws):
 # UPDATE STARTUP
 @app.on_event("startup")
 async def startup_event():
+    # Start News Engine (Background Daemon)
+    start_news_engine()
+    
     global smart_api_global
     
     def run_angel_websocket():

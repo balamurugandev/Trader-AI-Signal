@@ -1904,3 +1904,131 @@ body {
         min-width: 100px;
     }
 }
+
+/* =============================================================================
+   REAL-TIME NEWS TICKER (Added)
+   ============================================================================= */
+.news-container {
+    display: flex;
+    flex-direction: row;
+    background-color: var(--bg-card);
+    /* Native Card BG */
+    border: 1px solid var(--border-color);
+    /* Native Border */
+    border-left: 4px solid var(--accent-blue);
+    /* Native Accent */
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+    min-height: 80px;
+    max-height: 180px;
+    width: 100%;
+    margin-top: 15px;
+    margin-bottom: 20px;
+    border-radius: var(--radius-md);
+    overflow: hidden;
+}
+
+.news-label {
+    background-color: rgba(30, 43, 58, 0.5);
+    /* Semi-transparent header */
+    color: var(--accent-blue);
+    /* Native Accent */
+    font-size: 0.75rem;
+    font-weight: 700;
+    padding: 12px;
+    width: 100px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    border-right: 1px solid var(--border-color);
+    line-height: 1.4;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.ticker-wrapper {
+    flex-grow: 1;
+    padding: 10px 14px;
+    overflow-y: auto;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Custom Scrollbar */
+.ticker-wrapper::-webkit-scrollbar {
+    width: 6px;
+}
+
+.ticker-wrapper::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.ticker-wrapper::-webkit-scrollbar-thumb {
+    background: var(--border-color);
+    border-radius: 3px;
+}
+
+.news-content {
+    display: block;
+    width: 100%;
+    height: auto;
+    animation: none;
+    padding: 0;
+}
+
+.news-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    width: 100%;
+}
+
+.news-item {
+    font-family: var(--font-main);
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    line-height: 1.4;
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border-color);
+    transition: background-color 0.2s;
+}
+
+.news-item:last-child {
+    border-bottom: none;
+}
+
+.news-bullet {
+    color: var(--accent-blue);
+    /* Bullet color match */
+    font-size: 0.7rem;
+    margin-top: 4px;
+    flex-shrink: 0;
+}
+
+.news-text {
+    font-weight: 400;
+}
+
+.news-source {
+    font-size: 0.7rem;
+    color: var(--text-secondary);
+    /* Match news text */
+    font-style: normal;
+    /* No longer italic */
+    margin-left: auto;
+    /* Push to right or just gap */
+    padding-left: 8px;
+    white-space: nowrap;
+    opacity: 0.7;
+    /* Slight dim to distinguish from headline */
+}
+
+/* Hover effect */
+.news-item:hover .news-text {
+    color: var(--text-primary);
+}

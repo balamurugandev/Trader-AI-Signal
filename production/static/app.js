@@ -25,7 +25,7 @@ const lastUpdate = document.getElementById('last-update');
 let scalpingStatus, futurePrice, cePrice, pePrice, basisValue, biasFill, straddleValue;
 window.lastSignalState = null; // Track last signal for history log
 let scalpingSignalBox, scalpSignalIcon, scalpSignalText, scalpSignalDesc;
-let ceStrike, peStrike, tradeSuggestion, latencyDot, latencyText, momentumBar, velocityValue;
+let ceStrike, peStrike, tradeSuggestion, latencyDot, latencyText, momentumBar, velocityValue, newsTicker;
 let pcrBadgeSignal, pcrValueSignal, pcrBadge, pcrValueEl;
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -47,7 +47,9 @@ document.addEventListener('DOMContentLoaded', () => {
     latencyDot = document.getElementById('latency-dot');
     latencyText = document.getElementById('latency-text');
     momentumBar = document.getElementById('momentum-bar');
+    momentumBar = document.getElementById('momentum-bar');
     velocityValue = document.getElementById('velocity-value');
+    newsTicker = document.getElementById('news-ticker');
     pcrBadgeSignal = document.getElementById('pcr-badge-signal');
     pcrValueSignal = document.getElementById('pcr-value-signal');
     pcrBadge = document.getElementById('pcr-badge');
@@ -125,6 +127,66 @@ function updateDashboard(data) {
 
     // Update signal
     updateSignal(data.signal, data.candles_count);
+
+    // Update News Ticker
+    // Update News Ticker (List View)
+    if (data.news && newsTicker) {
+        // Only update if content changed significantly
+        if (newsTicker.getAttribute('data-last-news') !== data.news) {
+            newsTicker.setAttribute('data-last-news', data.news);
+
+            // Split string by separator '✦' and filter empty strings
+            const headlines = data.news.split('✦').map(h => h.trim()).filter(h => h.length > 0);
+
+            // Render as List
+            if (headlines.length > 0) {
+                // Clear existing
+                newsTicker.innerHTML = '';
+                const ul = document.createElement('div');
+                ul.className = 'news-grid'; // Use grid/flex for layout
+
+                headlines.forEach(head => {
+                    const item = document.createElement('div');
+                    item.className = 'news-item';
+
+                    // Parse "Headline|Source"
+                    let title = head;
+                    let source = "";
+                    if (head.includes('|')) {
+                        const parts = head.split('|');
+                        title = parts[0];
+                        source = parts[1];
+                    }
+
+                    // Clean symbols
+                    const cleanHead = title.replace(/[►▼▲]/g, '').trim();
+
+                    // Render with Source Badge
+                    item.innerHTML = `
+                        <span class="news-bullet">➤</span> 
+                        <span class="news-text">${cleanHead}</span>
+                        ${source ? `<span class="news-source">(${source})</span>` : ''}
+                    `;
+                    ul.appendChild(item);
+                });
+                newsTicker.appendChild(ul);
+
+                // ⚡ Flash effect for dynamic update
+                const container = document.querySelector('.news-container');
+                if (container) {
+                    container.style.transition = 'border-color 0.3s';
+                    const originalBorder = container.style.borderColor;
+                    container.style.borderColor = 'var(--text-primary)'; // Flash white border
+                    setTimeout(() => {
+                        container.style.borderColor = ''; // Revert to CSS default
+                    }, 500);
+                }
+
+            } else {
+                newsTicker.innerHTML = '<div class="news-fetching">Waiting for updates...</div>';
+            }
+        }
+    }
 
     // Update timestamp
     if (lastUpdate) {
@@ -821,6 +883,7 @@ document.addEventListener('DOMContentLoaded', () => {
     latencyText = document.getElementById('latency-text');
     momentumBar = document.getElementById('momentum-bar');
     velocityValue = document.getElementById('velocity-value');
+    newsTicker = document.getElementById('news-ticker');
     pcrBadgeSignal = document.getElementById('pcr-badge-signal');
     pcrValueSignal = document.getElementById('pcr-value-signal');
     pcrBadge = document.getElementById('pcr-badge');
