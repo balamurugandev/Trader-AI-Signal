@@ -148,6 +148,7 @@ scalping_signal = "WAIT"
 scalping_status = "INITIALIZING..."
 
 # Professional Scalping - New State Variables
+last_logged_signal = None  # To prevent log spam
 real_basis: Optional[float] = None  # Synthetic Future - Spot
 sentiment = "NEUTRAL"  # BULLISH, BEARISH, NEUTRAL
 straddle_trend = "FLAT"  # RISING, FALLING, FLAT
@@ -594,6 +595,7 @@ def update_scalping_data():
     global momentum_buffer, last_price_for_velocity # V6 Fix: Added missing globals
     global current_ce_symbol, current_pe_symbol  # Full symbol names for UI
     global last_tick_timestamp, points_per_sec, current_latency_ms # V7: Health Checks
+    global last_logged_signal # Prevent log spam
     
     print("🚀 Scalping Module thread started")
     
@@ -940,18 +942,25 @@ def update_scalping_data():
                 
                 # LOG VALID TRADES (Fire-and-Forget)
                 # LOG VALID TRADES (Fire-and-Forget)
-                if scalping_signal not in ["WAIT", "NEUTRAL"]:
-                    trade_logger.log_trade(
-                        spot=spot,
-                        basis=real_basis,
-                        pcr=pcr_value if pcr_value else 0.0,
-                        signal=scalping_signal,
-                        trap_reason=trade_suggestion,
-                        ce_symbol=current_ce_symbol,
-                        pe_symbol=current_pe_symbol,
-                        ce_price=ce_ltp,
-                        pe_price=pe_ltp
-                    )
+                # LOG VALID TRADES (State Change Only)
+                # Only log if the signal is diff from last logged state AND it's a trade signal
+                if scalping_signal != last_logged_signal:
+                    if scalping_signal not in ["WAIT", "NEUTRAL"]:
+                        trade_logger.log_trade(
+                            spot=spot,
+                            basis=real_basis,
+                            pcr=pcr_value if pcr_value else 0.0,
+                            signal=scalping_signal,
+                            trap_reason=trade_suggestion,
+                            ce_symbol=current_ce_symbol,
+                            pe_symbol=current_pe_symbol,
+                            ce_price=ce_ltp,
+                            pe_price=pe_ltp
+                        )
+                        last_logged_signal = scalping_signal
+                    elif scalping_signal == "WAIT":
+                         # Reset logic if needed, or just track WAIT so next BUY triggers log
+                         last_logged_signal = scalping_signal
                 
                 # Append to history with enhanced data
                 scalping_history.append({
