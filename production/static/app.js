@@ -643,19 +643,37 @@ function updateScalperUI(data) {
     }
 
     // Update ATM Strike badges with full symbol names
-    const ceStrike = document.getElementById('ce-strike');
-    const peStrike = document.getElementById('pe-strike');
+    const ceStrikeEl = document.getElementById('ce-strike');
+    const peStrikeEl = document.getElementById('pe-strike');
 
-    if (data.ce_symbol && ceStrike) {
-        ceStrike.textContent = formatSymbol(data.ce_symbol);
-    } else if (data.atm_strike && ceStrike) {
-        ceStrike.textContent = data.atm_strike; // Fallback
+    // Helper to flash element on change
+    const updateAndFlash = (element, newValue) => {
+        if (!element || element.textContent === newValue) return;
+        element.textContent = newValue;
+        element.style.color = 'var(--accent-yellow)';
+        element.style.transition = 'none';
+
+        // Force reflow
+        void element.offsetWidth;
+
+        element.style.transition = 'color 1s ease';
+        setTimeout(() => {
+            element.style.color = 'var(--accent-yellow)'; // Keep it yellow or revert to default?
+            // User wants it dynamic. Let's keep it yellow (like in screenshot) or revert.
+            // Screenshot has it yellow.
+        }, 50);
+    };
+
+    if (data.ce_symbol) {
+        if (ceStrikeEl) updateAndFlash(ceStrikeEl, formatSymbol(data.ce_symbol));
+    } else if (data.atm_strike && ceStrikeEl) {
+        ceStrikeEl.textContent = `${data.atm_strike} CE`; // Fallback with CE
     }
 
-    if (data.pe_symbol && peStrike) {
-        peStrike.textContent = formatSymbol(data.pe_symbol);
-    } else if (data.atm_strike && peStrike) {
-        peStrike.textContent = data.atm_strike; // Fallback
+    if (data.pe_symbol) {
+        if (peStrikeEl) updateAndFlash(peStrikeEl, formatSymbol(data.pe_symbol));
+    } else if (data.atm_strike && peStrikeEl) {
+        peStrikeEl.textContent = `${data.atm_strike} PE`; // Fallback with PE
     }
 
     // Update Trade Suggestion
@@ -847,15 +865,18 @@ document.addEventListener('DOMContentLoaded', () => {
 // Moved to global scope for reuse in history log
 const formatSymbol = (symbol) => {
     if (!symbol || symbol.length < 10) return symbol;
-    // Extract date and strike from symbol like "NIFTY27JAN2525050CE"
+
+    // Pattern 1: NIFTY27JAN25100CE (Old)
+    // Pattern 2: NIFTY03FEB2525300CE (New API standard?)
+    // Regex: NIFTY + (Day:2) + (Month:3) + (Year:2) + (Strike:Var) + (Type:2)
     const match = symbol.match(/NIFTY(\d{2})([A-Z]{3})(\d{2})(\d+)(CE|PE)/);
+
     if (match) {
         const [, day, month, year, strike, type] = match;
-        const monthMap = {
-            JAN: 'Jan', FEB: 'Feb', MAR: 'Mar', APR: 'Apr', MAY: 'May', JUN: 'Jun',
-            JUL: 'Jul', AUG: 'Aug', SEP: 'Sep', OCT: 'Oct', NOV: 'Nov', DEC: 'Dec'
-        };
-        return `${day} ${monthMap[month] || month} ${strike}${type}`;
+        // Capitalize month properly just in case
+        const monthTitle = month.charAt(0).toUpperCase() + month.slice(1).toLowerCase();
+
+        return `${day} ${monthTitle} ${strike}${type}`;
     }
     return symbol;
 };
