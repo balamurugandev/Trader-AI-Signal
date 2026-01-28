@@ -789,7 +789,10 @@ def update_scalping_data():
                  
             poll_count += 1
             if poll_count % 10 == 1:  # Log every 10th poll
-                print(f"📊 Poll #{poll_count}: ATM={current_atm}, FUT={fut_ltp}, CE={ce_ltp}, PE={pe_ltp}")
+                # Format symbols for log: Strip "NIFTY" to keep it concise but readable
+                c_lbl = ce_symbol.replace('NIFTY', '') if ce_symbol else '--'
+                p_lbl = pe_symbol.replace('NIFTY', '') if pe_symbol else '--'
+                print(f"📊 Poll #{poll_count}: ATM={current_atm} [{c_lbl}|{p_lbl}], FUT={fut_ltp}, CE={ce_ltp}, PE={pe_ltp}")
 
             # ============================================================
             # V6 VELOCITY ENGINE (Momentum Calculation)
