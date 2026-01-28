@@ -88,6 +88,22 @@ To solve the "Cost of Carry" permanent bull bias in Indian markets:
   - `> +3`: 🟢 **BULLISH** (Institutional Long Buildup)
   - `< -3`: 🔴 **BEARISH** (Institutional Short Buildup)
 
+### ⚡ Features
+
+### 1. Velocity Momentum Bar (New)
+Located under the Future Price, this tool measures the speed of price movement in **Points per Second (pts/s)**.
+- **Visuals**: A dynamic bar that fills up as speed increases (Yellow -> Red intensity).
+- **Label**: Shows exact speed (e.g., `⚡ 5.2 pts/s`).
+- **Usage**:
+    - **< 2.0 pts/s**: Low momentum (Chop/Sideways).
+    - **> 5.0 pts/s**: High momentum (Strong Trend).
+    - Use this to confirm "Fast Breakouts" vs "Slow Grinds".
+
+### 2. Scalping Signals
+- **BUY CALL**: Triggered when Price is ABOVE EMA + RSI < 30 (Oversold) + Rising Momentum.o decay.
+- **RISING Straddle**: Momentum is increasing (Safe to enter).
+- **FALLING Straddle**: Theta decay is dominant (Stay away).
+
 ### 2. Straddle Trend (Theta Protection)
 We track the **Straddle Price** (`ATM CE + ATM PE`) to avoid trading into decay.
 - **RISING Straddle**: Momentum is increasing (Safe to enter).

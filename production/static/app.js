@@ -25,7 +25,7 @@ const lastUpdate = document.getElementById('last-update');
 let scalpingStatus, futurePrice, cePrice, pePrice, basisValue, biasFill, straddleValue;
 window.lastSignalState = null; // Track last signal for history log
 let scalpingSignalBox, scalpSignalIcon, scalpSignalText, scalpSignalDesc;
-let ceStrike, peStrike, tradeSuggestion, latencyDot, latencyText, momentumBar;
+let ceStrike, peStrike, tradeSuggestion, latencyDot, latencyText, momentumBar, velocityValue;
 let pcrBadgeSignal, pcrValueSignal, pcrBadge, pcrValueEl;
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -47,6 +47,7 @@ document.addEventListener('DOMContentLoaded', () => {
     latencyDot = document.getElementById('latency-dot');
     latencyText = document.getElementById('latency-text');
     momentumBar = document.getElementById('momentum-bar');
+    velocityValue = document.getElementById('velocity-value');
     pcrBadgeSignal = document.getElementById('pcr-badge-signal');
     pcrValueSignal = document.getElementById('pcr-value-signal');
     pcrBadge = document.getElementById('pcr-badge');
@@ -701,12 +702,24 @@ function updateScalperUI(data) {
         }
     }
 
-    // 2. Velocity Momentum Bar
-    if (data.velocity !== undefined && momentumBar) {
-        // Cap at 10 pts/sec for 100% width
-        const velocity = Math.abs(data.velocity);
-        const width = Math.min((velocity / 10) * 100, 100);
-        momentumBar.style.width = `${width}%`;
+    // 2. Velocity Momentum Bar (Enhanced)
+    if (data.velocity !== undefined) {
+        // Update Bar Width
+        if (momentumBar) {
+            // Cap at 10 pts/sec for 100% width
+            const velocity = Math.abs(data.velocity);
+            const width = Math.min((velocity / 10) * 100, 100);
+            momentumBar.style.width = `${width}%`;
+        }
+
+        // Update Text Label
+        if (velocityValue) {
+            const vel = Math.abs(data.velocity).toFixed(1);
+            velocityValue.textContent = `⚡ ${vel} pts/s`;
+
+            // Dynamic Color for Text
+            velocityValue.style.color = (Math.abs(data.velocity) > 3.0) ? 'var(--accent-green)' : 'var(--accent-yellow)';
+        }
     }
 
     // 3. PCR Badge (Signal Box)
@@ -807,6 +820,7 @@ document.addEventListener('DOMContentLoaded', () => {
     latencyDot = document.getElementById('latency-dot');
     latencyText = document.getElementById('latency-text');
     momentumBar = document.getElementById('momentum-bar');
+    velocityValue = document.getElementById('velocity-value');
     pcrBadgeSignal = document.getElementById('pcr-badge-signal');
     pcrValueSignal = document.getElementById('pcr-value-signal');
     pcrBadge = document.getElementById('pcr-badge');

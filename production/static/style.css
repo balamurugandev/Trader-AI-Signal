@@ -720,26 +720,52 @@ body {
     /* Ensure block for stacking */
 }
 
-/* Momentum Speedometer */
+/* Momentum Bar Enhanced */
+.momentum-wrapper {
+    margin-top: 8px;
+    width: 100%;
+}
+
+.momentum-info {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 4px;
+    font-size: 0.75rem;
+}
+
+.momentum-label {
+    color: var(--text-muted);
+    text-transform: uppercase;
+    font-size: 0.7rem;
+    font-weight: 600;
+}
+
+.velocity-value {
+    color: var(--accent-yellow);
+    font-family: var(--font-mono);
+    font-weight: 500;
+}
+
 .momentum-container {
     width: 100%;
-    max-width: 120px;
-    height: 4px;
+    height: 6px;
+    /* Thicker bar */
     background: rgba(255, 255, 255, 0.1);
-    border-radius: 2px;
-    margin-top: 6px;
+    /* Track background */
+    border-radius: 3px;
     overflow: hidden;
-    margin-left: auto;
-    /* Align right */
 }
 
 .momentum-bar {
     height: 100%;
     width: 0%;
     /* Dynamic */
-    background: linear-gradient(90deg, #663399, #00ff88);
-    /* Purple to Green */
+    background: linear-gradient(90deg, #ffaa00, #ff4560);
+    /* Yellow to Red (Energy) */
     transition: width 0.3s ease;
+    border-radius: 3px;
+    box-shadow: 0 0 10px rgba(255, 170, 0, 0.3);
 }
 
 /* Strike Badge for ATM CE/PE */
