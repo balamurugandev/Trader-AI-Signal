@@ -541,7 +541,6 @@ def fetch_oi_data(smart_api):
     
     while True:
         try:
-            # Check if we have active symbols AND TOKENS to fetch OI for
             if 'current_ce_symbol' in globals() and current_ce_symbol and \
                'atm_ce_token' in globals() and atm_ce_token and \
                'current_pe_symbol' in globals() and current_pe_symbol and \
@@ -549,38 +548,44 @@ def fetch_oi_data(smart_api):
                smart_api:
                 
                 try:
-                    # Fetch Quotes for full depth (includes OI)
-                    # USAGE: getQuote(exchange, symbol, token)
+                    # Fetch Quotes
                     ce_quote = smart_api.getQuote("NFO", current_ce_symbol, atm_ce_token)
                     pe_quote = smart_api.getQuote("NFO", current_pe_symbol, atm_pe_token)
                     
-                    ce_oi = 0
-                    pe_oi = 0
+                    # Debug: Print keys if first run or error
+                    # print(f"DEBUG CE QUOTE KEYS: {ce_quote['data'].keys() if ce_quote and 'data' in ce_quote else 'No Data'}")
                     
-                    if ce_quote and ce_quote.get('status') and ce_quote.get('data'):
-                        ce_oi = float(ce_quote['data'].get('oi', 0))
-                        
-                    if pe_quote and pe_quote.get('status') and pe_quote.get('data'):
-                        pe_oi = float(pe_quote['data'].get('oi', 0))
+                    def get_oi(quote_data):
+                        if not quote_data or 'data' not in quote_data: return 0
+                        d = quote_data['data']
+                        # Try common keys for Open Interest
+                        for key in ['oi', 'opnInterest', 'openInterest', 'opn_interest']:
+                            if key in d:
+                                return float(d[key].replace(',','') if isinstance(d[key], str) else d[key])
+                        return 0
+
+                    ce_oi = get_oi(ce_quote)
+                    pe_oi = get_oi(pe_quote)
                     
                     if ce_oi > 0:
                         raw_pcr = pe_oi / ce_oi
                         pcr_value = round(raw_pcr, 2)
                         
-                        # Trap Logic
                         is_trap = False 
                         if pcr_value > 2.0: is_trap = True
                         elif pcr_value < 0.5: is_trap = True
                              
-                        # Log success for verification (visible in console)
                         print(f"📊 PCR UPDATED: {pcr_value} (CE_OI: {ce_oi}, PE_OI: {pe_oi})")
                     else:
-                        print(f"⚠️ Zero CE OI for {current_ce_symbol}. PCR remains {pcr_value}")
+                        # Log why it failed to help debugging
+                        keys_found = ce_quote['data'].keys() if ce_quote and 'data' in ce_quote else "None"
+                        print(f"⚠️ Zero CE OI for {current_ce_symbol}. Keys found: {list(keys_found)}")
+                        # Keep previous pcr_value (don't reset to 1.0 blindly if we have a stale valid one?)
+                        # But if initialized to 1.0, it stays 1.0.
                         
                 except Exception as api_err:
                     print(f"⚠️ OI API Error: {api_err}")
             else:
-               # print("⏳ Waiting for ATM tokens to initialize PCR...")
                pass
             
             time.sleep(10) # Poll every 10s
