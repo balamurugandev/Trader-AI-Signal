@@ -156,10 +156,10 @@ function updateTickerTape(tickers) {
     // BUT resetting innerHTML might kill scroll position. Let's update intelligently.
 
     // indices mapping
-    const indices = ['nifty', 'sensex', 'banknifty', 'midcpnifty', 'niftysmallcap', 'indiavix'];
+    const indices = ['nifty', 'sensex', 'banknifty', 'midcpnifty', 'indiavix'];
     const displayNames = {
         'nifty': 'NIFTY 50', 'sensex': 'SENSEX', 'banknifty': 'BANKNIFTY',
-        'midcpnifty': 'MIDCPNIFTY', 'niftysmallcap': 'NIFTY SMALLCAP', 'indiavix': 'INDIA VIX'
+        'midcpnifty': 'MIDCPNIFTY', 'indiavix': 'INDIA VIX'
     };
 
     // Check if structure exists, if not create it (FIRST RUN)

@@ -1318,7 +1318,8 @@ body {
 /* Ticker Tape - Grid Layout (3x2) */
 .ticker-tape {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(5, 1fr);
+    /* Exactly 5 columns (Nifty, Sensex, Bank, Midcp, VIX) */
     /* Exactly 3 columns */
     gap: 16px;
     /* Consistent gap */
