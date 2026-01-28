@@ -659,7 +659,8 @@ def update_scalping_data():
                 continue
             
             # DYNAMIC ATM TRACKING: Check on EVERY tick
-            new_atm = int(round(spot / 50) * 50)
+            # Standard rounding: int((x / step) + 0.5) * step handles .5 consistently up
+            new_atm = int((spot / 50) + 0.5) * 50
             
             should_switch = False
             
@@ -667,10 +668,10 @@ def update_scalping_data():
                  should_switch = True
             elif new_atm != current_atm_strike:
                 # Hysteresis Check:
-                # Only switch if Spot is significantly deep into the new zone for INDIAN MARKET stability.
-                # Midpoint is 25 pts away. Buffer is 15 pts. Total distance needed = 40 pts.
+                # Reduced buffer to match broker standards (more responsive).
+                # Midpoint is 25 pts. Buffer is 5 pts. Switch at >= 30 pts diff.
                 dist = abs(spot - current_atm_strike)
-                if dist >= 40:
+                if dist >= 30:
                     should_switch = True
             
             # DATE ROLLOVER CHECK (Fix for Overnight Server Run)
