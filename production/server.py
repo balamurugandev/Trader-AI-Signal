@@ -549,10 +549,21 @@ def fetch_oi_data(smart_api):
                 
                 try:
                     # Fetch Quotes
-                    # USAGE: getOIData(exchange, symbol, token) - Found via inspection
-                    ce_quote = smart_api.getOIData("NFO", current_ce_symbol, atm_ce_token)
-                    pe_quote = smart_api.getOIData("NFO", current_pe_symbol, atm_pe_token)
+                    # Error indicated getOIData takes 1 arg (plus self). Trying Symbol then Token.
+                    ce_quote = None
+                    pe_quote = None
                     
+                    try:
+                        ce_quote = smart_api.getOIData(current_ce_symbol)
+                        pe_quote = smart_api.getOIData(current_pe_symbol)
+                    except Exception as e1:
+                        print(f"⚠️ getOIData(symbol) failed: {e1}")
+                        try:
+                            ce_quote = smart_api.getOIData(atm_ce_token)
+                            pe_quote = smart_api.getOIData(atm_pe_token)
+                        except Exception as e2:
+                            print(f"⚠️ getOIData(token) failed: {e2}")
+
                     # Debug: Print keys if first run or error
                     # print(f"DEBUG CE QUOTE KEYS: {ce_quote['data'].keys() if ce_quote and 'data' in ce_quote else 'No Data'}")
                     
