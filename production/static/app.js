@@ -137,16 +137,12 @@ function updateTickerTape(tickers) {
 
     // Helper to create HTML for a ticker item
     const createTickerItem = (name, data) => {
-        const changeClass = data.change >= 0 ? 'positive' : 'negative';
-        const arrow = data.change >= 0 ? '▲' : '▼';
+        // const changeClass = data.change >= 0 ? 'positive' : 'negative';
+        // const arrow = data.change >= 0 ? '▲' : '▼';
         return `
             <div class="ticker-item">
                 <span class="ticker-name">${name}</span>
                 <span class="ticker-value">${data.price.toFixed(2)}</span>
-                <span class="ticker-change ${changeClass}">
-                    ${data.change > 0 ? '+' : ''}${data.change.toFixed(2)} 
-                    (${data.p_change.toFixed(2)}%) ${arrow}
-                </span>
             </div>
         `;
     };
@@ -192,12 +188,8 @@ function updateTickerTape(tickers) {
             const changeEl = item.querySelector('.ticker-change');
 
             if (valueEl) valueEl.textContent = data.price.toFixed(2);
-            if (changeEl) {
-                const changeClass = data.change >= 0 ? 'positive' : 'negative';
-                const arrow = data.change >= 0 ? '▲' : '▼';
-                changeEl.className = `ticker-change ${changeClass}`;
-                changeEl.textContent = `${data.change > 0 ? '+' : ''}${data.change.toFixed(2)} (${data.p_change.toFixed(2)}%) ${arrow}`;
-            }
+            // Change removed as per request
+            if (changeEl) changeEl.style.display = 'none';
         });
     }
 }

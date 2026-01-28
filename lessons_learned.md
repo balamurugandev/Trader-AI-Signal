@@ -339,4 +339,9 @@
     - Added `get_ema_trend(spot)` using 20-tick simple mean.
     - **Rule 1**: If Spot > EMA (Trend UP) → BLOCK all Bearish signals.
     - **Rule 2**: If Spot < EMA (Trend DOWN) → BLOCK all Bullish signals.
+    - **Note**: Trend-following trades (e.g., BUY PUT when Trend is DOWN) are **ALLOWED**. Verified 3:05 PM simulation.
 - **Active Window**: 14:55 to 15:30 only.
+
+## UI Cleanups (Jan 28 2026)
+- **Problem**: Index Ticker "Day Change" values were static/inaccurate because the API doesn't provide them in the lightweight stream.
+- **Solution**: Removed Change/Percentage from the ticker. Now displays only **Name** and **Price** for a cleaner look.
