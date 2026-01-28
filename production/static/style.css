@@ -732,6 +732,8 @@ body {
     align-items: center;
     margin-bottom: 4px;
     font-size: 0.75rem;
+    gap: 12px;
+    /* Ensure spacing between label and value */
 }
 
 .momentum-label {
