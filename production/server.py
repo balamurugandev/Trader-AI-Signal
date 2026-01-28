@@ -741,6 +741,10 @@ def update_scalping_data():
                 current_expiry = tokens.get('expiry_date') # Update expiry global
                 current_atm = new_atm
                 
+                # CRITICAL: Update globals for API responses
+                current_ce_symbol = ce_symbol
+                current_pe_symbol = pe_symbol
+                
                 # Clear straddle history on ATM change
                 if new_atm != current_atm_strike:
                     last_straddle_prices.clear()
