@@ -901,7 +901,7 @@ def update_scalping_data():
                 straddle_trend = "FLAT"
 
                 if ce_ltp and pe_ltp:
-                    straddle_price = round(ce_ltp + pe_ltp, 2)  # Straddle = CE + PE (NOT average!)
+                    straddle_price = round((ce_ltp + pe_ltp) / 2, 2)  # Averaging Price (intentional)
                     last_straddle_price = straddle_price
                 elif last_straddle_price is not None:
                     straddle_price = last_straddle_price
