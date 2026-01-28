@@ -714,8 +714,8 @@ function updateScalperUI(data) {
 
         // Update Text Label
         if (velocityValue) {
-            const vel = Math.abs(data.velocity).toFixed(1);
-            velocityValue.textContent = `⚡ ${vel} pts/s`;
+            const vel = Math.abs(data.velocity).toFixed(2);
+            velocityValue.textContent = `${vel} pts/s`;
 
             // Dynamic Color for Text
             velocityValue.style.color = (Math.abs(data.velocity) > 3.0) ? 'var(--accent-green)' : 'var(--accent-yellow)';

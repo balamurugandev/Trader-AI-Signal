@@ -93,7 +93,7 @@ To solve the "Cost of Carry" permanent bull bias in Indian markets:
 ### 1. Velocity Momentum Bar (New)
 Located under the Future Price, this tool measures the speed of price movement in **Points per Second (pts/s)**.
 - **Visuals**: A dynamic bar that fills up as speed increases (Yellow -> Red intensity).
-- **Label**: Shows exact speed (e.g., `⚡ 5.2 pts/s`).
+- **Label**: Shows exact speed (e.g., `5.25 pts/s`).
 - **Usage**:
     - **< 2.0 pts/s**: Low momentum (Chop/Sideways).
     - **> 5.0 pts/s**: High momentum (Strong Trend).
