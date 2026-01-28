@@ -332,3 +332,11 @@
 2. **Global State Synchronization**:
    - **Bug:** `current_ce_symbol` wasn't updating globally, causing mismatched labels.
    - **Fix:** Explicitly update global tracking variables immediately after fetching new tokens.
+
+## 3:00 PM Safety Protocol (Jan 28 2026)
+- **Problem**: Short Covering @ 3:00 PM creates "Fake Breakouts" where Price rises but Strike Premiums/Basis drop due to rapid decay/square-off.
+- **Solution**: "Trust the Trend, not the Math".
+    - Added `get_ema_trend(spot)` using 20-tick simple mean.
+    - **Rule 1**: If Spot > EMA (Trend UP) → BLOCK all Bearish signals.
+    - **Rule 2**: If Spot < EMA (Trend DOWN) → BLOCK all Bullish signals.
+- **Active Window**: 14:55 to 15:30 only.

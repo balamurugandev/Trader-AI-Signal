@@ -166,7 +166,9 @@ pcr_value: float = 1.0
 is_trap = False
 last_tick_timestamp: float = 0.0  # Time of last received tick (for latency)
 current_latency_ms: float = 0.0 # Smoothed RTT Latency (Stable Metric)
+current_latency_ms: float = 0.0 # Smoothed RTT Latency (Stable Metric)
 points_per_sec: float = 0.0  # Current velocity (points/sec)
+ema_trend_history: deque = deque(maxlen=20) # 3PM Filter: EMA Trend Buffer
 
 # =============================================================================
 # INDEX TOKENS & REAL-TIME DATA (NEW)
@@ -355,6 +357,30 @@ def parse_expiry_from_symbol(symbol: str) -> Optional[datetime]:
         except ValueError:
             return None
     return None
+
+def get_ema_trend(current_spot: float) -> str:
+    """
+    Helper for 3:00 PM Safety Filter.
+    Returns 'UP', 'DOWN', or 'SIDEWAYS' based on immediate EMA trend.
+    """
+    global ema_trend_history
+    
+    if current_spot and current_spot > 0:
+        ema_trend_history.append(current_spot)
+    
+    if len(ema_trend_history) < 5:
+        return "SIDEWAYS" # Not enough data
+        
+    # Calculate Simple Mean (close enough to EMA for short burst) or proper EMA
+    # Using Simple Mean of last 20 ticks for resilience
+    avg_price = sum(ema_trend_history) / len(ema_trend_history)
+    
+    if current_spot > avg_price + 2:
+        return "UP"
+    elif current_spot < avg_price - 2:
+        return "DOWN"
+    else:
+        return "SIDEWAYS"
 
 def get_option_tokens(smart_api, spot_price: float) -> dict:
     """
@@ -956,8 +982,31 @@ def update_scalping_data():
                           trade_suggestion = f"⚠️ BEAR TRAP! PCR={pcr_value:.2f} (HIGH)\n📉 Price Falling but Bullish OI\n🎯 Smart Money BUYING"
                 
                 # SIDEWAYS
+                # SIDEWAYS
                 elif abs(current_velocity) < 0.2:
                      trade_suggestion = "⚪ SIDEWAYS - Scalping Zone"
+                     
+                # --- FINAL CHECK: 3:00 PM TREND LOCK (Active ONLY after 14:55) ---
+                # Purpose: At 3:00 PM, Short Covering often causes Basis to drop while Price rises.
+                # We must trust the EMA Price Trend over the Basis during this specific time.
+                
+                now = datetime.now()
+                # Check if time is past 2:55 PM (14:55)
+                if now.hour >= 15 or (now.hour == 14 and now.minute >= 55):
+                    market_trend = get_ema_trend(spot)
+                    
+                    # Rule 1: Never Short a Rising Market at 3 PM
+                    # (Even if Basis says Sell, if Price > EMA, we WAIT)
+                    if scalping_signal == "BUY PUT" and market_trend == "UP":
+                        scalping_signal = "WAIT"
+                        is_trap = True
+                        trade_suggestion = f"⚠️ 3PM SAFETY: Price Trend is UP (Spot > EMA)\nBlocking Bearish Signal"
+                        
+                    # Rule 2: Never Buy a Falling Market at 3 PM
+                    elif scalping_signal == "BUY CALL" and market_trend == "DOWN":
+                        scalping_signal = "WAIT"
+                        is_trap = True
+                        trade_suggestion = f"⚠️ 3PM SAFETY: Price Trend is DOWN (Spot < EMA)\nBlocking Bullish Signal"
                 
                 # Determine status
                 # Keep LIVE if we have current OR cached data (Safe check for None)
