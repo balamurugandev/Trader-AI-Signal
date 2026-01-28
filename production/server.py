@@ -548,36 +548,32 @@ def fetch_oi_data(smart_api):
                smart_api:
                 
                 try:
-                    # Fetch Quotes
-                    # Error indicated getOIData takes 1 arg (plus self). Trying Symbol then Token.
-                    ce_quote = None
-                    pe_quote = None
+                    # Use getMarketData with mode "FULL" to get OI
+                    # Signature: getMarketData(mode, exchangeTokens)
+                    # mode: "FULL" | "OHLC" | "LTP"
+                    # exchangeTokens: {"NFO": ["token1", "token2"]}
                     
-                    try:
-                        ce_quote = smart_api.getOIData(current_ce_symbol)
-                        pe_quote = smart_api.getOIData(current_pe_symbol)
-                    except Exception as e1:
-                        print(f"⚠️ getOIData(symbol) failed: {e1}")
-                        try:
-                            ce_quote = smart_api.getOIData(atm_ce_token)
-                            pe_quote = smart_api.getOIData(atm_pe_token)
-                        except Exception as e2:
-                            print(f"⚠️ getOIData(token) failed: {e2}")
-
-                    # Debug: Print keys if first run or error
-                    # print(f"DEBUG CE QUOTE KEYS: {ce_quote['data'].keys() if ce_quote and 'data' in ce_quote else 'No Data'}")
+                    exchange_tokens = {"NFO": [atm_ce_token, atm_pe_token]}
+                    market_data = smart_api.getMarketData("FULL", exchange_tokens)
                     
-                    def get_oi(quote_data):
-                        if not quote_data or 'data' not in quote_data: return 0
-                        d = quote_data['data']
-                        # Try common keys for Open Interest
-                        for key in ['oi', 'opnInterest', 'openInterest', 'opn_interest']:
-                            if key in d:
-                                return float(d[key].replace(',','') if isinstance(d[key], str) else d[key])
-                        return 0
-
-                    ce_oi = get_oi(ce_quote)
-                    pe_oi = get_oi(pe_quote)
+                    ce_oi = 0
+                    pe_oi = 0
+                    
+                    if market_data and market_data.get('status') and market_data.get('data'):
+                        fetched_list = market_data['data'].get('fetched', [])
+                        for item in fetched_list:
+                            token = str(item.get('symbolToken', ''))
+                            # OI key could be 'opnInterest', 'oi', etc.
+                            oi_val = 0
+                            for key in ['opnInterest', 'oi', 'openInterest']:
+                                if key in item:
+                                    oi_val = float(str(item[key]).replace(',', ''))
+                                    break
+                            
+                            if token == atm_ce_token:
+                                ce_oi = oi_val
+                            elif token == atm_pe_token:
+                                pe_oi = oi_val
                     
                     if ce_oi > 0:
                         raw_pcr = pe_oi / ce_oi
@@ -589,17 +585,16 @@ def fetch_oi_data(smart_api):
                              
                         print(f"📊 PCR UPDATED: {pcr_value} (CE_OI: {ce_oi}, PE_OI: {pe_oi})")
                     else:
-                        # Log why it failed to help debugging
-                        keys_found = ce_quote['data'].keys() if ce_quote and 'data' in ce_quote else "None"
-                        print(f"⚠️ Zero CE OI for {current_ce_symbol}. Keys found: {list(keys_found)}")
+                        # Log raw response for debugging
+                        print(f"⚠️ Zero CE OI. Raw response: {market_data}")
                     
                     # DEBUG: Dump Raw Response to File for AI Analysis
                     try:
                         debug_dump = {
                             "timestamp": datetime.now().isoformat(),
-                            "ce_symbol": current_ce_symbol,
-                            "ce_raw": ce_quote,
-                            "pe_raw": pe_quote
+                            "ce_token": atm_ce_token,
+                            "pe_token": atm_pe_token,
+                            "raw_response": market_data
                         }
                         with open("production/static/oi_debug.json", "w") as f:
                             json.dump(debug_dump, f, indent=2, default=str)
