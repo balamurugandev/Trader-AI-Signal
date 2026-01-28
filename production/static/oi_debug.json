@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-01-28T14:12:58.661345",
+  "timestamp": "2026-01-28T14:19:32.196166",
   "ce_token": "49791",
   "pe_token": "49792",
   "raw_response": {
@@ -12,77 +12,77 @@
           "exchange": "NFO",
           "tradingSymbol": "NIFTY03FEB2625200PE",
           "symbolToken": "49792",
-          "ltp": 195.5,
+          "ltp": 195.0,
           "open": 181.35,
           "high": 215.65,
           "low": 141.45,
           "close": 204.05,
           "lastTradeQty": 65,
-          "exchFeedTime": "28-Jan-2026 14:12:58",
-          "exchTradeTime": "28-Jan-2026 14:12:57",
-          "netChange": -8.55,
-          "percentChange": -4.19,
-          "avgPrice": 178.84,
-          "tradeVolume": 110330610,
-          "opnInterest": 5115955,
+          "exchFeedTime": "28-Jan-2026 14:19:31",
+          "exchTradeTime": "28-Jan-2026 14:19:31",
+          "netChange": -9.05,
+          "percentChange": -4.44,
+          "avgPrice": 179.39,
+          "tradeVolume": 113997780,
+          "opnInterest": 5106530,
           "lowerCircuit": 0.05,
           "upperCircuit": 471.3,
-          "totBuyQuan": 2847000,
-          "totSellQuan": 568295,
+          "totBuyQuan": 2829710,
+          "totSellQuan": 627965,
           "52WeekLow": 0.0,
           "52WeekHigh": 411.35,
           "depth": {
             "buy": [
               {
-                "price": 194.95,
+                "price": 195.0,
                 "quantity": 195,
                 "orders": 1
               },
               {
                 "price": 194.9,
-                "quantity": 455,
-                "orders": 3
+                "quantity": 130,
+                "orders": 1
               },
               {
                 "price": 194.85,
-                "quantity": 1105,
-                "orders": 8
+                "quantity": 195,
+                "orders": 2
               },
               {
                 "price": 194.8,
-                "quantity": 910,
-                "orders": 8
+                "quantity": 325,
+                "orders": 3
               },
               {
                 "price": 194.75,
-                "quantity": 910,
+                "quantity": 1105,
                 "orders": 7
               }
             ],
             "sell": [
               {
+                "price": 195.25,
+                "quantity": 1040,
+                "orders": 8
+              },
+              {
                 "price": 195.3,
-                "quantity": 715,
-                "orders": 7
-              },
-              {
-                "price": 195.35,
-                "quantity": 455,
-                "orders": 4
-              },
-              {
-                "price": 195.4,
-                "quantity": 1105,
-                "orders": 7
-              },
-              {
-                "price": 195.45,
-                "quantity": 1625,
+                "quantity": 1560,
                 "orders": 10
               },
               {
-                "price": 195.5,
-                "quantity": 2275,
+                "price": 195.35,
+                "quantity": 1430,
+                "orders": 11
+              },
+              {
+                "price": 195.4,
+                "quantity": 1365,
+                "orders": 8
+              },
+              {
+                "price": 195.45,
+                "quantity": 585,
                 "orders": 5
               }
             ]
@@ -92,78 +92,78 @@
           "exchange": "NFO",
           "tradingSymbol": "NIFTY03FEB2625200CE",
           "symbolToken": "49791",
-          "ltp": 231.2,
+          "ltp": 232.0,
           "open": 326.2,
           "high": 366.25,
           "low": 224.0,
           "close": 295.2,
           "lastTradeQty": 65,
-          "exchFeedTime": "28-Jan-2026 14:12:58",
-          "exchTradeTime": "28-Jan-2026 14:12:57",
-          "netChange": -64.0,
-          "percentChange": -21.68,
-          "avgPrice": 286.98,
-          "tradeVolume": 49867025,
-          "opnInterest": 4787900,
+          "exchFeedTime": "28-Jan-2026 14:19:31",
+          "exchTradeTime": "28-Jan-2026 14:19:31",
+          "netChange": -63.2,
+          "percentChange": -21.41,
+          "avgPrice": 285.17,
+          "tradeVolume": 51566125,
+          "opnInterest": 4855955,
           "lowerCircuit": 20.05,
           "upperCircuit": 749.25,
-          "totBuyQuan": 298090,
-          "totSellQuan": 787215,
+          "totBuyQuan": 361855,
+          "totSellQuan": 785200,
           "52WeekLow": 0.0,
           "52WeekHigh": 1124.35,
           "depth": {
             "buy": [
               {
-                "price": 231.35,
-                "quantity": 325,
-                "orders": 5
-              },
-              {
-                "price": 231.2,
-                "quantity": 65,
-                "orders": 1
-              },
-              {
-                "price": 231.15,
-                "quantity": 260,
-                "orders": 2
-              },
-              {
-                "price": 231.1,
+                "price": 231.85,
                 "quantity": 390,
                 "orders": 3
               },
               {
-                "price": 231.05,
-                "quantity": 650,
-                "orders": 5
+                "price": 231.75,
+                "quantity": 130,
+                "orders": 1
+              },
+              {
+                "price": 231.7,
+                "quantity": 715,
+                "orders": 7
+              },
+              {
+                "price": 231.65,
+                "quantity": 715,
+                "orders": 6
+              },
+              {
+                "price": 231.6,
+                "quantity": 1170,
+                "orders": 7
               }
             ],
             "sell": [
               {
-                "price": 231.6,
-                "quantity": 455,
-                "orders": 4
+                "price": 232.0,
+                "quantity": 1495,
+                "orders": 1
               },
               {
-                "price": 231.65,
+                "price": 232.15,
+                "quantity": 260,
+                "orders": 1
+              },
+              {
+                "price": 232.2,
+                "quantity": 195,
+                "orders": 2
+              },
+              {
+                "price": 232.25,
                 "quantity": 585,
-                "orders": 6
+                "orders": 7
               },
               {
-                "price": 231.7,
-                "quantity": 1170,
-                "orders": 9
-              },
-              {
-                "price": 231.75,
-                "quantity": 1430,
-                "orders": 11
-              },
-              {
-                "price": 231.8,
-                "quantity": 1105,
-                "orders": 8
+                "price": 232.3,
+                "quantity": 1365,
+                "orders": 10
               }
             ]
           }

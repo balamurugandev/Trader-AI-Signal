@@ -588,18 +588,7 @@ def fetch_oi_data(smart_api):
                         # Log raw response for debugging
                         print(f"⚠️ Zero CE OI. Raw response: {market_data}")
                     
-                    # DEBUG: Dump Raw Response to File for AI Analysis
-                    try:
-                        debug_dump = {
-                            "timestamp": datetime.now().isoformat(),
-                            "ce_token": atm_ce_token,
-                            "pe_token": atm_pe_token,
-                            "raw_response": market_data
-                        }
-                        with open("production/static/oi_debug.json", "w") as f:
-                            json.dump(debug_dump, f, indent=2, default=str)
-                    except Exception as dx:
-                        print(f"Debug write failed: {dx}")
+
                         
                 except Exception as api_err:
                     print(f"⚠️ OI API Error: {api_err}")
