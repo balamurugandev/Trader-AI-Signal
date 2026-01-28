@@ -1245,9 +1245,10 @@ async def get_scalper_data():
 
 
 @app.get("/api/logs")
-async def get_trade_logs(limit: int = 50):
+async def get_trade_logs(limit: int = 100, date: Optional[str] = None):
     """
     Fetch recent trade logs from Supabase.
+    Supports filtering by date (YYYY-MM-DD).
     CRITICAL: Runs in a separate thread to prevent blocking the WebSocket loop.
     """
     try:
@@ -1256,11 +1257,19 @@ async def get_trade_logs(limit: int = 50):
 
         # Run blocking Supabase query in a thread
         def fetch_query():
-            return trade_logger.supabase.table('trade_logs') \
+            query = trade_logger.supabase.table('trade_logs') \
                 .select("*") \
                 .order('timestamp', desc=True) \
-                .limit(limit) \
-                .execute()
+                .limit(limit)
+            
+            if date:
+                # Filter by specific date (whole day)
+                # Assumes timestamp column is compatible with ISO strings
+                start_ts = f"{date}T00:00:00"
+                end_ts = f"{date}T23:59:59"
+                query = query.gte('timestamp', start_ts).lte('timestamp', end_ts)
+            
+            return query.execute()
 
         response = await asyncio.to_thread(fetch_query)
         return response.data

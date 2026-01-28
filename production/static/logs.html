@@ -120,6 +120,17 @@
             padding: 20px;
             color: #8b949e;
         }
+
+        .date-input {
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            color: var(--text-color);
+            padding: 8px;
+            border-radius: 6px;
+            font-family: inherit;
+            color-scheme: dark;
+            margin-right: 10px;
+        }
     </style>
 </head>
 
@@ -127,8 +138,9 @@
 
     <div class="header">
         <h1>📜 Trade Signal Logs</h1>
-        <div>
-            <button onclick="fetchLogs()" class="btn btn-primary">Refresh</button>
+        <div style="display: flex; align-items: center;">
+            <input type="date" id="log-date" class="date-input" onchange="fetchLogs()">
+            <button onclick="fetchLogs()" class="btn btn-primary" style="margin-right: 10px;">Refresh</button>
             <a href="/" class="btn">Back to Dashboard</a>
         </div>
     </div>
@@ -153,15 +165,34 @@
     </div>
 
     <script>
+        // Set default date to today
+        document.addEventListener('DOMContentLoaded', () => {
+            const dateInput = document.getElementById('log-date');
+            if (dateInput) {
+                // Adjust for local timezone to get correct YYYY-MM-DD
+                const today = new Date();
+                const offset = today.getTimezoneOffset();
+                const localDate = new Date(today.getTime() - (offset * 60 * 1000));
+                dateInput.value = localDate.toISOString().split('T')[0];
+            }
+            fetchLogs();
+        });
+
         async function fetchLogs() {
             const tbody = document.getElementById('logs-body');
             const loading = document.getElementById('loading');
+            const dateVal = document.getElementById('log-date').value;
 
             loading.style.display = 'block';
             tbody.innerHTML = ''; // Clear existing
 
             try {
-                const response = await fetch('/api/logs?limit=100');
+                let url = '/api/logs?limit=200'; // Increased limit for daily view
+                if (dateVal) {
+                    url += `&date=${dateVal}`;
+                }
+
+                const response = await fetch(url);
                 const data = await response.json();
 
                 loading.style.display = 'none';
@@ -172,7 +203,7 @@
                 }
 
                 if (data.length === 0) {
-                    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;">No logs found.</td></tr>`;
+                    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;">No logs found for ${dateVal || 'recent'}.</td></tr>`;
                     return;
                 }
 
@@ -246,9 +277,6 @@
                 tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:red;">Failed to fetch logs. Is server running?</td></tr>`;
             }
         }
-
-        // Auto load on start
-        fetchLogs();
     </script>
 
 </body>
