@@ -640,36 +640,45 @@ body {
     /* 3 Column Layout: Data | Chart | Signals */
     gap: 16px;
     margin-bottom: 20px;
-    align-items: stretch;
+    align-items: start;
+    /* Changed from stretch to start */
 }
 
 /* Responsive Rules for Scalping Grid */
 @media (max-width: 1200px) {
     .scalping-grid {
-        grid-template-columns: 1fr 1fr; /* 2 Columns */
-        grid-template-areas: 
+        grid-template-columns: 1fr 1fr;
+        /* 2 Columns */
+        grid-template-areas:
             "data signals"
             "chart chart";
     }
 
-    .scalping-data-panel { grid-area: data; }
-    .scalping-signal-panel { grid-area: signals; }
-    .scalping-chart-panel { 
-        grid-area: chart; 
+    .scalping-data-panel {
+        grid-area: data;
+    }
+
+    .scalping-signal-panel {
+        grid-area: signals;
+    }
+
+    .scalping-chart-panel {
+        grid-area: chart;
         min-height: 400px;
     }
 }
 
 @media (max-width: 768px) {
     .scalping-grid {
-        grid-template-columns: 1fr; /* 1 Column */
-        grid-template-areas: 
+        grid-template-columns: 1fr;
+        /* 1 Column */
+        grid-template-areas:
             "data"
             "chart"
             "signals";
     }
-    
-    .scalping-chart-panel { 
+
+    .scalping-chart-panel {
         min-height: 350px;
     }
 }
@@ -1373,7 +1382,8 @@ body {
     display: flex;
     flex-direction: column;
     gap: 6px;
-    height: 240px;
+    max-height: 240px;
+    /* Changed from fixed height to max-height */
     /* Increased for more room */
     overflow-y: auto;
     scrollbar-width: none;
