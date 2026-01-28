@@ -1,7 +1,7 @@
 {
-  "timestamp": "2026-01-28T11:41:54.173064",
-  "ce_token": "49795",
-  "pe_token": "49796",
+  "timestamp": "2026-01-28T13:53:30.799124",
+  "ce_token": "49791",
+  "pe_token": "49792",
   "raw_response": {
     "status": true,
     "message": "SUCCESS",
@@ -10,160 +10,160 @@
       "fetched": [
         {
           "exchange": "NFO",
-          "tradingSymbol": "NIFTY03FEB2625300PE",
-          "symbolToken": "49796",
-          "ltp": 196.55,
-          "open": 229.0,
-          "high": 258.0,
-          "low": 177.35,
-          "close": 246.6,
+          "tradingSymbol": "NIFTY03FEB2625200PE",
+          "symbolToken": "49792",
+          "ltp": 200.55,
+          "open": 181.35,
+          "high": 215.65,
+          "low": 141.45,
+          "close": 204.05,
           "lastTradeQty": 65,
-          "exchFeedTime": "28-Jan-2026 11:41:53",
-          "exchTradeTime": "28-Jan-2026 11:41:53",
-          "netChange": -50.05,
-          "percentChange": -20.3,
-          "avgPrice": 216.13,
-          "tradeVolume": 100212710,
-          "opnInterest": 7265115,
+          "exchFeedTime": "28-Jan-2026 13:53:30",
+          "exchTradeTime": "28-Jan-2026 13:53:29",
+          "netChange": -3.5,
+          "percentChange": -1.72,
+          "avgPrice": 178.02,
+          "tradeVolume": 101778755,
+          "opnInterest": 4932070,
           "lowerCircuit": 0.05,
-          "upperCircuit": 558.65,
-          "totBuyQuan": 2896140,
-          "totSellQuan": 925210,
+          "upperCircuit": 471.3,
+          "totBuyQuan": 2788305,
+          "totSellQuan": 526695,
           "52WeekLow": 0.0,
-          "52WeekHigh": 474.0,
+          "52WeekHigh": 411.35,
           "depth": {
             "buy": [
               {
-                "price": 196.55,
-                "quantity": 130,
-                "orders": 2
+                "price": 200.0,
+                "quantity": 845,
+                "orders": 7
               },
               {
-                "price": 196.5,
-                "quantity": 325,
-                "orders": 4
-              },
-              {
-                "price": 196.45,
-                "quantity": 910,
-                "orders": 8
-              },
-              {
-                "price": 196.4,
-                "quantity": 1365,
-                "orders": 9
-              },
-              {
-                "price": 196.35,
-                "quantity": 1170,
-                "orders": 8
-              }
-            ],
-            "sell": [
-              {
-                "price": 196.9,
-                "quantity": 520,
-                "orders": 6
-              },
-              {
-                "price": 196.95,
-                "quantity": 585,
-                "orders": 4
-              },
-              {
-                "price": 197.0,
+                "price": 199.95,
                 "quantity": 1105,
                 "orders": 7
               },
               {
-                "price": 197.05,
-                "quantity": 910,
-                "orders": 9
+                "price": 199.9,
+                "quantity": 780,
+                "orders": 5
               },
               {
-                "price": 197.1,
-                "quantity": 1625,
+                "price": 199.85,
+                "quantity": 1430,
                 "orders": 11
+              },
+              {
+                "price": 199.8,
+                "quantity": 1560,
+                "orders": 9
+              }
+            ],
+            "sell": [
+              {
+                "price": 200.4,
+                "quantity": 845,
+                "orders": 6
+              },
+              {
+                "price": 200.45,
+                "quantity": 260,
+                "orders": 4
+              },
+              {
+                "price": 200.5,
+                "quantity": 975,
+                "orders": 8
+              },
+              {
+                "price": 200.55,
+                "quantity": 1235,
+                "orders": 10
+              },
+              {
+                "price": 200.6,
+                "quantity": 1105,
+                "orders": 8
               }
             ]
           }
         },
         {
           "exchange": "NFO",
-          "tradingSymbol": "NIFTY03FEB2625300CE",
-          "symbolToken": "49795",
-          "ltp": 249.4,
-          "open": 254.0,
-          "high": 303.55,
-          "low": 210.0,
-          "close": 242.05,
-          "lastTradeQty": 260,
-          "exchFeedTime": "28-Jan-2026 11:41:53",
-          "exchTradeTime": "28-Jan-2026 11:41:53",
-          "netChange": 7.35,
-          "percentChange": 3.04,
-          "avgPrice": 254.11,
-          "tradeVolume": 89850085,
-          "opnInterest": 5426720,
-          "lowerCircuit": 11.7,
-          "upperCircuit": 654.6,
-          "totBuyQuan": 435500,
-          "totSellQuan": 799760,
+          "tradingSymbol": "NIFTY03FEB2625200CE",
+          "symbolToken": "49791",
+          "ltp": 233.8,
+          "open": 326.2,
+          "high": 366.25,
+          "low": 224.0,
+          "close": 295.2,
+          "lastTradeQty": 65,
+          "exchFeedTime": "28-Jan-2026 13:53:30",
+          "exchTradeTime": "28-Jan-2026 13:53:29",
+          "netChange": -61.4,
+          "percentChange": -20.8,
+          "avgPrice": 293.06,
+          "tradeVolume": 44093270,
+          "opnInterest": 4391725,
+          "lowerCircuit": 20.05,
+          "upperCircuit": 749.25,
+          "totBuyQuan": 337870,
+          "totSellQuan": 696215,
           "52WeekLow": 0.0,
-          "52WeekHigh": 1032.45,
+          "52WeekHigh": 1124.35,
           "depth": {
             "buy": [
               {
-                "price": 249.25,
+                "price": 233.5,
+                "quantity": 520,
+                "orders": 2
+              },
+              {
+                "price": 233.45,
+                "quantity": 390,
+                "orders": 4
+              },
+              {
+                "price": 233.4,
+                "quantity": 845,
+                "orders": 6
+              },
+              {
+                "price": 233.35,
                 "quantity": 520,
                 "orders": 6
               },
               {
-                "price": 249.2,
-                "quantity": 1235,
-                "orders": 10
-              },
-              {
-                "price": 249.15,
-                "quantity": 1300,
-                "orders": 11
-              },
-              {
-                "price": 249.1,
-                "quantity": 1365,
+                "price": 233.3,
+                "quantity": 910,
                 "orders": 7
-              },
-              {
-                "price": 249.05,
-                "quantity": 715,
-                "orders": 6
               }
             ],
             "sell": [
               {
-                "price": 249.7,
-                "quantity": 260,
-                "orders": 1
-              },
-              {
-                "price": 249.75,
-                "quantity": 390,
+                "price": 233.8,
+                "quantity": 195,
                 "orders": 3
               },
               {
-                "price": 249.8,
-                "quantity": 1040,
-                "orders": 8
+                "price": 233.85,
+                "quantity": 455,
+                "orders": 3
               },
               {
-                "price": 249.85,
-                "quantity": 910,
-                "orders": 6
+                "price": 233.9,
+                "quantity": 650,
+                "orders": 4
               },
               {
-                "price": 249.9,
-                "quantity": 1560,
-                "orders": 10
+                "price": 233.95,
+                "quantity": 1105,
+                "orders": 7
+              },
+              {
+                "price": 234.0,
+                "quantity": 4615,
+                "orders": 18
               }
             ]
           }
