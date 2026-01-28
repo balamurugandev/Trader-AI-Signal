@@ -162,7 +162,7 @@ last_price_for_velocity: float = 0.0 # V6: For tracking change
 
 # Anomaly Detection Globals
 raw_basis_history: deque = deque(maxlen=300)  # For Z-Score (300 ticks ~ 5 mins)
-pcr_value: Optional[float] = None
+pcr_value: float = 1.0
 is_trap = False
 last_tick_timestamp: float = 0.0  # Time of last received tick (for latency)
 current_latency_ms: float = 0.0 # Smoothed RTT Latency (Stable Metric)

@@ -718,19 +718,22 @@ function updateScalperUI(data) {
     }
 
     // 3. PCR Badge (Signal Box)
-    if (data.pcr !== undefined && data.pcr !== null && pcrBadgeSignal && pcrValueSignal) {
-        pcrBadgeSignal.style.display = 'block';
-        pcrValueSignal.textContent = data.pcr.toFixed(2);
+    // 3. PCR Badge (Signal Box)
+    if (pcrBadgeSignal && pcrValueSignal) {
+        pcrBadgeSignal.style.display = 'block'; // Always show
 
-        if (data.pcr > 1.0) {
+        let pcrVal = data.pcr;
+        if (pcrVal === undefined || pcrVal === null) pcrVal = 1.0; // Default Neutral
+
+        pcrValueSignal.textContent = pcrVal.toFixed(2);
+
+        if (pcrVal > 1.0) {
             pcrValueSignal.style.color = 'var(--accent-green)';
-        } else if (data.pcr < 0.7) {
+        } else if (pcrVal < 0.7) {
             pcrValueSignal.style.color = 'var(--accent-red)';
         } else {
             pcrValueSignal.style.color = 'var(--text-muted)';
         }
-    } else if (pcrBadgeSignal) {
-        pcrBadgeSignal.style.display = 'none';
     }
 
     // Update PCR Badge (New)
