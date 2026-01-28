@@ -2,7 +2,7 @@ import threading
 import queue
 import os
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from typing import Dict, Any
 from dotenv import load_dotenv
 from pathlib import Path
@@ -67,7 +67,7 @@ class AsyncLogger:
             return
 
         payload = {
-            "timestamp": datetime.now().isoformat(),
+            "timestamp": datetime.now(timezone(timedelta(hours=5, minutes=30))).isoformat(),
             "spot_price": spot,
             "basis": basis,
             "pcr": pcr,
