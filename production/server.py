@@ -536,27 +536,28 @@ def fetch_oi_data(smart_api):
     Fetches REAL-TIME OI for ATM CE and PE tokens to calculate PCR.
     Runs every 30 seconds to save bandwidth.
     """
-    global pcr_value, is_trap, current_ce_symbol, current_pe_symbol
+    global pcr_value, is_trap, current_ce_symbol, current_pe_symbol, atm_ce_token, atm_pe_token
     print("🛡️ OI Trap Filter thread started (Live PCR)")
     
     while True:
         try:
-            # Check if we have active symbols to fetch OI for
+            # Check if we have active symbols AND TOKENS to fetch OI for
             if 'current_ce_symbol' in globals() and current_ce_symbol and \
+               'atm_ce_token' in globals() and atm_ce_token and \
                'current_pe_symbol' in globals() and current_pe_symbol and \
+               'atm_pe_token' in globals() and atm_pe_token and \
                smart_api:
                 
                 try:
                     # Fetch Quotes for full depth (includes OI)
-                    # Note: getQuote provides 'oi' field in the data
-                    ce_quote = smart_api.getQuote("NFO", current_ce_symbol)
-                    pe_quote = smart_api.getQuote("NFO", current_pe_symbol)
+                    # USAGE: getQuote(exchange, symbol, token)
+                    ce_quote = smart_api.getQuote("NFO", current_ce_symbol, atm_ce_token)
+                    pe_quote = smart_api.getQuote("NFO", current_pe_symbol, atm_pe_token)
                     
                     ce_oi = 0
                     pe_oi = 0
                     
                     if ce_quote and ce_quote.get('status') and ce_quote.get('data'):
-                        # Angel One returns OI as 'oi' (sometimes string)
                         ce_oi = float(ce_quote['data'].get('oi', 0))
                         
                     if pe_quote and pe_quote.get('status') and pe_quote.get('data'):
@@ -566,33 +567,27 @@ def fetch_oi_data(smart_api):
                         raw_pcr = pe_oi / ce_oi
                         pcr_value = round(raw_pcr, 2)
                         
-                        # Trap Check: Example logic
-                        # If PCR is extremely high (>1.5) but Price falling -> Trap
-                        # If PCR extremely low (<0.6) but Price rising -> Trap
-                        is_trap = False # Reset
-                        if pcr_value > 2.0: # Extreme Bullish Warning
-                             is_trap = True
-                        elif pcr_value < 0.5: # Extreme Bearish Warning
-                             is_trap = True
+                        # Trap Logic
+                        is_trap = False 
+                        if pcr_value > 2.0: is_trap = True
+                        elif pcr_value < 0.5: is_trap = True
                              
-                        # print(f"🛡️ Valid IO update: CE_OI={ce_oi}, PE_OI={pe_oi} => PCR={pcr_value}")
+                        # Log success for verification (visible in console)
+                        print(f"📊 PCR UPDATED: {pcr_value} (CE_OI: {ce_oi}, PE_OI: {pe_oi})")
                     else:
-                        # Fallback if no CE OI (e.g., illiquid or error)
-                        pcr_value = 1.0
+                        print(f"⚠️ Zero CE OI for {current_ce_symbol}. PCR remains {pcr_value}")
                         
                 except Exception as api_err:
                     print(f"⚠️ OI API Error: {api_err}")
-                    pass
-
             else:
-               # No symbols yet, wait
+               # print("⏳ Waiting for ATM tokens to initialize PCR...")
                pass
             
-            time.sleep(10) # Poll every 10s (increased frequency for responsiveness)
+            time.sleep(10) # Poll every 10s
             
         except Exception as e:
             print(f"⚠️ OI Fetch error: {e}")
-            time.sleep(30)
+            time.sleep(10)
 
 def update_scalping_data():
     """
