@@ -570,9 +570,9 @@ def fetch_oi_data(smart_api):
                                     oi_val = float(str(item[key]).replace(',', ''))
                                     break
                             
-                            if token == atm_ce_token:
+                            if token == str(atm_ce_token):
                                 ce_oi = oi_val
-                            elif token == atm_pe_token:
+                            elif token == str(atm_pe_token):
                                 pe_oi = oi_val
                     
                     if ce_oi > 0:
