@@ -103,6 +103,11 @@ function updateDashboard(data) {
     // Update market status
     updateStatus(data.market_status);
 
+    // DEBUG: Trace PCR Data Flow
+    if (data.pcr !== undefined) {
+        console.log(`📡 PCR Update: Val=${data.pcr}, Age=${data.pcr_age}s`);
+    }
+
     // Update stats
     tickCount.textContent = data.total_ticks.toLocaleString();
     candleCount.textContent = `${data.candles_count}/200`;
@@ -804,15 +809,34 @@ function updateScalperUI(data) {
     }
 
     // Update PCR Badge (New)
-    if (data.pcr !== undefined && pcrBadge && pcrValueEl) {
-        pcrBadge.style.display = 'block';
-        pcrValueEl.textContent = data.pcr.toFixed(2);
+    if (data.pcr !== undefined && pcrBadgeSignal && pcrValueSignal) {
+        pcrBadgeSignal.style.display = 'block';
 
-        pcrBadge.classList.remove('bullish', 'bearish');
+        // Show PCR value with staleness indicator
+        const pcrAge = data.pcr_age !== undefined ? data.pcr_age : -1;
+        let ageText = '';
+        let ageColor = '';
+
+        if (pcrAge >= 0) {
+            if (pcrAge < 15) {
+                ageText = `(${pcrAge}s)`;
+                ageColor = 'var(--accent-green)'; // Fresh
+            } else if (pcrAge < 30) {
+                ageText = `(${pcrAge}s)`;
+                ageColor = 'var(--accent-yellow)'; // Moderate
+            } else {
+                ageText = `(${pcrAge}s ⚠️)`;
+                ageColor = 'var(--accent-red)'; // Stale
+            }
+        }
+
+        pcrValueSignal.innerHTML = `${data.pcr.toFixed(2)} <span style="font-size: 0.7em; color: ${ageColor};">${ageText}</span>`;
+
+        pcrBadgeSignal.classList.remove('bullish', 'bearish');
         if (data.pcr > 1.0) {
-            pcrBadge.classList.add('bullish');
+            pcrBadgeSignal.classList.add('bullish');
         } else if (data.pcr < 0.7) {
-            pcrBadge.classList.add('bearish');
+            pcrBadgeSignal.classList.add('bearish');
         }
     }
 

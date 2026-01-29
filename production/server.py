@@ -166,6 +166,7 @@ last_price_for_velocity: float = 0.0 # V6: For tracking change
 # Anomaly Detection Globals
 raw_basis_history: deque = deque(maxlen=300)  # For Z-Score (300 ticks ~ 5 mins)
 pcr_value: float = 1.0
+last_pcr_update: float = time.time()  # Initialize to now (show age from server start)
 is_trap = False
 last_tick_timestamp: float = 0.0  # Time of last received tick (for latency)
 current_latency_ms: float = 0.0 # Smoothed RTT Latency (Stable Metric)
@@ -565,7 +566,7 @@ def fetch_oi_data(smart_api):
     Fetches REAL-TIME OI for ATM CE and PE tokens to calculate PCR.
     Runs every 30 seconds to save bandwidth.
     """
-    global pcr_value, is_trap, current_ce_symbol, current_pe_symbol, atm_ce_token, atm_pe_token
+    global pcr_value, is_trap, current_ce_symbol, current_pe_symbol, atm_ce_token, atm_pe_token, last_pcr_update
     print("🛡️ OI Trap Filter thread started (Live PCR)")
     
     while True:
@@ -607,6 +608,7 @@ def fetch_oi_data(smart_api):
                     if ce_oi > 0:
                         raw_pcr = pe_oi / ce_oi
                         pcr_value = round(raw_pcr, 2)
+                        last_pcr_update = time.time()  # Track update timestamp
                         
                         is_trap = False 
                         if pcr_value > 2.0: is_trap = True
@@ -962,16 +964,37 @@ def update_scalping_data():
                 if current_velocity > 0.4:
                      if pcr_value >= 1.0: # Confirmed Bullish Data
                           if real_basis > -50: # Avoid deep discounts (extreme fear)
-                              scalping_signal = "BUY CALL"
-                              trade_suggestion = f"🚀 MOMENTUM UP ({current_velocity:.2f}) - BUY CE"
+                               scalping_signal = "BUY CALL"
+                               trade_suggestion = f"🚀 MOMENTUM UP ({current_velocity:.2f}) - BUY CE"
                           else:
-                              scalping_signal = "WAIT"
-                              trade_suggestion = "⚠️ Price Rising but Basis Crashed (Trap?)"
+                               scalping_signal = "WAIT"
+                               trade_suggestion = "⚠️ Price Rising but Basis Crashed (Trap?)"
+                     
+                     # --- FILTER: PCR TRAP (Calibrated Squeeze Override V7) ---
+                     # REPAIR: Velocity threshold lowered to 0.4 based on actual log data.
+                     # Logic: Block Bullish trades if PCR is low (Bearish OI).
+                     # EXCEPTION: If Sentiment > 5.0 (Panic Buying) AND Velocity > 0.4 (Real Momentum), 
+                     # we assume a Short Squeeze and OVERRIDE the trap.
+                     elif pcr_value < 0.6:
+                          is_short_squeeze = (sentiment_score > 5.0) and (current_velocity > 0.4)
+                          
+                          if is_short_squeeze:
+                               # OVERRIDE: Squeeze detected. Ignore PCR.
+                               scalping_signal = "BUY CALL"
+                               is_trap = False
+                               trade_suggestion = f"🚀 SHORT SQUEEZE (Sent {sentiment_score:.1f} + Vel {current_velocity:.2f})"
+                          else:
+                               # NORMAL: Block due to Bearish OI
+                               scalping_signal = "TRAP"
+                               is_trap = True
+                               trade_suggestion = f"⚠️ BULL TRAP! Bearish OI (PCR {pcr_value:.2f})\n📈 Price Rising but Smart Money SELLING"
+                     
                      else:
-                          # High Velocity but Low PCR = Divergence
+                          # PCR between 0.6 and 1.0 (Neutral Zone) - Treat as Trap
                           scalping_signal = "TRAP"
                           is_trap = True
-                          trade_suggestion = f"⚠️ BULL TRAP! PCR={pcr_value:.2f} (LOW)\n📈 Price Rising but Bearish OI\n🎯 Smart Money SELLING"
+                          trade_suggestion = f"⚠️ Weak OI Support (PCR={pcr_value:.2f})"
+                          
                           
                 # BUY PUT LOGIC
                 elif current_velocity < -0.4:
@@ -998,18 +1021,20 @@ def update_scalping_data():
                 if now.hour >= 15 or (now.hour == 14 and now.minute >= 55):
                     market_trend = get_ema_trend(spot)
                     
-                    # Rule 1: Never Short a Rising Market at 3 PM
-                    # (Even if Basis says Sell, if Price > EMA, we WAIT)
-                    if scalping_signal == "BUY PUT" and market_trend == "UP":
+                    # LOGIC PATCH V7: STRICT 3PM SAFETY (Block SIDEWAYS too)
+
+                    # Rule 1: Never Short a Rising OR Sideways Market at 3 PM
+                    # (Even if Basis says Sell, if Price > EMA or Flat, we WAIT)
+                    if scalping_signal == "BUY PUT" and market_trend in ["UP", "SIDEWAYS"]:
                         scalping_signal = "WAIT"
                         is_trap = True
-                        trade_suggestion = f"⚠️ 3PM SAFETY: Price Trend is UP (Spot > EMA)\nBlocking Bearish Signal"
+                        trade_suggestion = f"⚠️ 3PM SAFETY: Price Trend is {market_trend}\nBlocking Bearish Signal (Need DOWN)"
                         
-                    # Rule 2: Never Buy a Falling Market at 3 PM
-                    elif scalping_signal == "BUY CALL" and market_trend == "DOWN":
+                    # Rule 2: Never Buy a Falling OR Sideways Market at 3 PM
+                    elif scalping_signal == "BUY CALL" and market_trend in ["DOWN", "SIDEWAYS"]:
                         scalping_signal = "WAIT"
                         is_trap = True
-                        trade_suggestion = f"⚠️ 3PM SAFETY: Price Trend is DOWN (Spot < EMA)\nBlocking Bullish Signal"
+                        trade_suggestion = f"⚠️ 3PM SAFETY: Price Trend is {market_trend}\nBlocking Bullish Signal (Need UP)"
                 
                 # Determine status
                 # Keep LIVE if we have current OR cached data (Safe check for None)
@@ -1287,6 +1312,7 @@ async def get_scalper_data():
             "signal": scalping_signal,
             "suggestion": trade_suggestion,
             "pcr": pcr_value,  # New PCR Value
+            "pcr_age": int(time.time() - last_pcr_update) if last_pcr_update > 0 else -1,  # Staleness in seconds
             "atm_strike": current_atm_strike,  # Current ATM Strike
             "ce_symbol": current_ce_symbol,  # Full CE Symbol Name
             "pe_symbol": current_pe_symbol,  # Full PE Symbol Name
@@ -1362,6 +1388,7 @@ async def websocket_endpoint(websocket: WebSocket):
                         "sentiment": sentiment,
                         "trend": straddle_trend,
                         "pcr": pcr_value,
+                        "pcr_age": int(time.time() - last_pcr_update) if last_pcr_update > 0 else -1,  # Staleness in seconds
                         "atm_strike": current_atm_strike, # Added for UI Labels
                         "ce_symbol": current_ce_symbol,   # Added for UI Labels
                         "pe_symbol": current_pe_symbol,   # Added for UI Labels
