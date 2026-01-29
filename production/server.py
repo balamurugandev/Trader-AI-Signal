@@ -220,6 +220,11 @@ def lookup_and_subscribe_indices(smart_api):
                     "p_change": 0.0
                 }
                 print(f"   ✅ {key.upper()}: Initial LTP {ltp}")
+                
+                # CRITICAL: Initialize global last_price for Scalping Module
+                if key == "nifty":
+                    global last_price
+                    last_price = ltp
         except: pass
 
     # 2. Search for missing targets (Smallcap)
