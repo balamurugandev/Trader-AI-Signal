@@ -322,7 +322,7 @@ def update_scalping_subscriptions(future_tok, ce_tok, pe_tok):
         try:
             # NFO Exchange Type is 2
             token_list = [{"exchangeType": 2, "tokens": list(new_tokens)}]
-            sws.subscribe("scalping_stream", 3, token_list)
+            sws.subscribe("scalping_ltp", 1, token_list)
             
             # Update active set
             active_scalping_tokens.update(new_tokens)
@@ -1017,22 +1017,27 @@ def update_scalping_data():
             
             # Update RTT Latency (Updates every second)
             fetch_end_time = time.time()
-            if to_fetch:
-                 # Calculate RTT in MS
-                 rtt_ms = (fetch_end_time - fetch_start_time) * 1000
-                 
-                 # Smooth the latency (EMA)
-                 if 'current_latency_ms' not in globals() or current_latency_ms == 0:
-                     current_latency_ms = rtt_ms
-                 else:
-                     current_latency_ms = (current_latency_ms * 0.7) + (rtt_ms * 0.3)
+            # Update RTT Latency (Updates every second)
+            fetch_end_time = time.time()
+            # Calculate RTT in MS
+            rtt_ms = (fetch_end_time - fetch_start_time) * 1000
+            
+            # Smooth the latency (EMA)
+            if 'current_latency_ms' not in globals() or current_latency_ms == 0:
+                 current_latency_ms = rtt_ms
+            else:
+                 current_latency_ms = (current_latency_ms * 0.7) + (rtt_ms * 0.3)
                  
             poll_count += 1
             if poll_count % 10 == 1:  # Log every 10th poll
                 # Format symbols for log: Strip "NIFTY" to keep it concise but readable
                 c_lbl = ce_symbol.replace('NIFTY', '') if ce_symbol else '--'
                 p_lbl = pe_symbol.replace('NIFTY', '') if pe_symbol else '--'
-                print(f"📊 Poll #{poll_count}: ATM={current_atm} [{c_lbl}|{p_lbl}], FUT={fut_ltp}, CE={ce_ltp}, PE={pe_ltp}")
+                source = "WS-CACHE" if not to_fetch else f"NETWORK({len(to_fetch)})"
+                print(f"📊 Poll #{poll_count} [{source}]: ATM={current_atm} [{c_lbl}|{p_lbl}], FUT={fut_ltp}, CE={ce_ltp}, PE={pe_ltp}, Lat={rtt_ms:.1f}ms")
+
+            if to_fetch and poll_count % 5 == 0:
+                 print(f"⚠️ MISSING IN CACHE: {to_fetch}")
 
             # ============================================================
             # V6 VELOCITY ENGINE (Momentum Calculation)
@@ -1339,7 +1344,6 @@ def on_data(ws, message: dict):
         
         if ltp is not None:
              price = ltp / 100.0
-             current_time = datetime.now()
              
              with lock:
                 # 1. Identify which ticker this is
