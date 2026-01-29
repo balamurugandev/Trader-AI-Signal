@@ -11,6 +11,7 @@ import time
 from collections import deque
 from dataclasses import dataclass, asdict
 from datetime import datetime
+import calendar
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Optional, List, Set
@@ -392,6 +393,54 @@ def get_ema_trend(current_spot: float) -> str:
     else:
         return "SIDEWAYS"
 
+# =============================================================================
+# INSTRUMENT MASTER FILE CACHE (For reliable token lookup)
+# =============================================================================
+_instrument_cache = None
+_instrument_cache_date = None
+
+def get_nfo_instruments():
+    """
+    Download and cache the Angel One NFO instrument master file.
+    This is more reliable than searchScrip API and avoids rate limits.
+    """
+    global _instrument_cache, _instrument_cache_date
+    import requests
+    from datetime import date
+    
+    today = date.today()
+    
+    # Return cached data if valid (same day)
+    if _instrument_cache and _instrument_cache_date == today:
+        return _instrument_cache
+    
+    print("📥 Downloading NFO instrument master file...")
+    
+    try:
+        # Angel One provides instrument master at this URL
+        url = "https://margincalculator.angelbroking.com/OpenAPI_File/files/OpenAPIScripMaster.json"
+        response = requests.get(url, timeout=30)
+        response.raise_for_status()
+        
+        all_instruments = response.json()
+        
+        # Filter for NFO (NIFTY options and futures)
+        nfo_instruments = [
+            inst for inst in all_instruments 
+            if inst.get('exch_seg') == 'NFO' and 'NIFTY' in inst.get('name', '').upper()
+        ]
+        
+        print(f"✅ Downloaded {len(all_instruments)} instruments, filtered to {len(nfo_instruments)} NFO NIFTY instruments")
+        
+        _instrument_cache = nfo_instruments
+        _instrument_cache_date = today
+        
+        return nfo_instruments
+        
+    except Exception as e:
+        print(f"⚠️ Failed to download instrument master: {e}")
+        return []
+
 def get_option_tokens(smart_api, spot_price: float) -> dict:
     """
     Dynamically fetch tokens for NIFTY Future and ATM CE/PE options.
@@ -433,90 +482,175 @@ def get_option_tokens(smart_api, spot_price: float) -> dict:
         }
         
         try:
-            time.sleep(0.5)  # Rate limit protection
-            search_result = smart_api.searchScrip("NFO", "NIFTY")
+            # SMART EXPIRY CALCULATION: Find next Thursday (weekly expiry)
+            days_until_thursday = (3 - today.weekday()) % 7  # 3 = Thursday
+            if days_until_thursday == 0 and ist_now.time() > cutoff_time:
+                days_until_thursday = 7  # Move to next Thursday if market closed
+            next_thursday = today + timedelta(days=days_until_thursday)
             
-            if search_result and search_result.get('data'):
-                data_list = search_result['data']
-                print(f"📋 API returned {len(data_list)} instruments")
+            # Format expiry for symbol construction: DDMMMYY (e.g., 05FEB26)
+            expiry_str = next_thursday.strftime("%d%b%y").upper()
+            tokens['expiry_date'] = next_thursday
+            
+            print(f"📅 CALCULATED EXPIRY: {next_thursday.strftime('%d-%b-%Y (%A)')}")
+            print(f"📝 Expiry String for Symbols: {expiry_str}")
+            
+            # Construct exact symbol names
+            ce_symbol_name = f"NIFTY{expiry_str}{atm_strike}CE"
+            pe_symbol_name = f"NIFTY{expiry_str}{atm_strike}PE"
+            
+            # For futures, find nearest MONTHLY expiry (last Thursday of month)
+            current_month = today.month
+            current_year = today.year
+            
+            last_day = calendar.monthrange(current_year, current_month)[1]
+            last_date = datetime(current_year, current_month, last_day)
+            days_back = (last_date.weekday() - 3) % 7
+            monthly_expiry = last_date - timedelta(days=days_back)
+            
+            if monthly_expiry < today or (monthly_expiry == today and ist_now.time() > cutoff_time):
+                next_month = current_month + 1 if current_month < 12 else 1
+                next_year = current_year if current_month < 12 else current_year + 1
+                last_day = calendar.monthrange(next_year, next_month)[1]
+                last_date = datetime(next_year, next_month, last_day)
+                days_back = (last_date.weekday() - 3) % 7
+                monthly_expiry = last_date - timedelta(days=days_back)
+            
+            fut_expiry_str = monthly_expiry.strftime("%d%b%y").upper()
+            fut_symbol_name = f"NIFTY{fut_expiry_str}FUT"
+            
+            print(f"🔍 Looking for symbols:")
+            print(f"   CE: {ce_symbol_name}")
+            print(f"   PE: {pe_symbol_name}")
+            print(f"   FUT: {fut_symbol_name}")
+            
+            # INSTRUMENT MASTER FILE LOOKUP (No API calls required!)
+            instruments = get_nfo_instruments()
+            
+            if not instruments:
+                print("⚠️ Instrument master not available")
+                return tokens
+            
+            # DYNAMIC EXPIRY DISCOVERY: Find nearest available expiry from actual data
+            # Step 1: Extract all NIFTY 50 options (exclude BANKNIFTY, FINNIFTY, MIDCPNIFTY)
+            import re
+            
+            nifty50_options = []
+            for inst in instruments:
+                symbol = inst.get('symbol') or inst.get('tradingsymbol', '')
                 
-                # Step 1: Filter for NIFTY 50 only (exclude NIFTYNXT50, BANKNIFTY, FINNIFTY)
-                nifty_instruments = []
-                for item in data_list:
-                    ts = item.get('tradingsymbol', '')
-                    if ts.startswith('NIFTY') and 'NXT50' not in ts and 'BANK' not in ts and 'FIN' not in ts:
-                        nifty_instruments.append(item)
+                # Match NIFTY50 weekly options: NIFTY{DDMMMYY}{STRIKE}CE/PE
+                # Exclude BANKNIFTY, FINNIFTY, MIDCPNIFTY, NIFTYNXT50
+                if symbol.startswith('NIFTY') and (symbol.endswith('CE') or symbol.endswith('PE')):
+                    if 'BANK' not in symbol and 'FIN' not in symbol and 'MIDCP' not in symbol and 'NXT50' not in symbol:
+                        # Extract expiry date: NIFTY{DDMMMYY}...
+                        match = re.match(r'NIFTY(\d{2}[A-Z]{3}\d{2})', symbol)
+                        if match:
+                            expiry_str_found = match.group(1)
+                            try:
+                                expiry_date = datetime.strptime(expiry_str_found, "%d%b%y")
+                                if expiry_date >= today:  # Only future expiries
+                                    nifty50_options.append({
+                                        'symbol': symbol,
+                                        'token': inst.get('token') or inst.get('symboltoken'),
+                                        'expiry': expiry_date,
+                                        'expiry_str': expiry_str_found
+                                    })
+                            except:
+                                pass
+            
+            # Also find futures
+            nifty50_futures = []
+            for inst in instruments:
+                symbol = inst.get('symbol') or inst.get('tradingsymbol', '')
+                if symbol.startswith('NIFTY') and symbol.endswith('FUT') and 'BANK' not in symbol:
+                    match = re.match(r'NIFTY(\d{2}[A-Z]{3}\d{2})FUT', symbol)
+                    if match:
+                        expiry_str_found = match.group(1)
+                        try:
+                            expiry_date = datetime.strptime(expiry_str_found, "%d%b%y")
+                            if expiry_date >= today:
+                                nifty50_futures.append({
+                                    'symbol': symbol,
+                                    'token': inst.get('token') or inst.get('symboltoken'),
+                                    'expiry': expiry_date,
+                                    'expiry_str': expiry_str_found
+                                })
+                        except:
+                            pass
+            
+            print(f"📋 Found {len(nifty50_options)} NIFTY50 options, {len(nifty50_futures)} futures with future expiries")
+            
+            if not nifty50_options:
+                print("⚠️ No NIFTY50 options found in instrument master")
+                return tokens
+            
+            # Step 2: Find unique expiry dates and select nearest
+            unique_expiries = sorted(set(opt['expiry'] for opt in nifty50_options))
+            if unique_expiries:
+                nearest_expiry = unique_expiries[0]
+                nearest_expiry_str = nearest_expiry.strftime("%d%b%y").upper()
+                tokens['expiry_date'] = nearest_expiry
+                print(f"✅ NEAREST AVAILABLE EXPIRY: {nearest_expiry.strftime('%d-%b-%Y (%A)')}")
                 
-                print(f"📋 Filtered to {len(nifty_instruments)} NIFTY 50 instruments")
-                
-                # Step 2: Separate Options and Futures
-                options = []
-                futures = []
-                for item in nifty_instruments:
-                    ts = item.get('tradingsymbol', '')
-                    if ts.endswith('CE') or ts.endswith('PE'):
-                        expiry = parse_expiry_from_symbol(ts)
-                        if expiry:
-                            # 1. Base Check: Expiry must be >= Today
-                            if expiry >= today:
-                                # 2. Time Check: If Expiry is TODAY, check if market is closed
-                                if expiry == today and ist_now.time() > cutoff_time:
-                                    print(f"Skipping TODAY'S expiry {ts} (Market Closed)")
-                                    continue
-                                options.append({**item, 'expiry_date': expiry})
-                    elif ts.endswith('FUT') and len(ts) <= 17:  # Simple future, not spread
-                        expiry = parse_expiry_from_symbol(ts)
-                        if expiry:
-                             if expiry >= today:
-                                if expiry == today and ist_now.time() > cutoff_time:
-                                    continue
-                                futures.append({**item, 'expiry_date': expiry})
-                
-                print(f"📋 Valid options: {len(options)}, Valid futures: {len(futures)}")
-                
-                # Step 3: SMART EXPIRY - Sort options by expiry date ascending
-                options.sort(key=lambda x: x['expiry_date'])
-                futures.sort(key=lambda x: x['expiry_date'])
-                
-                # Step 4: Find NEAREST WEEKLY EXPIRY
-                if options:
-                    nearest_expiry = options[0]['expiry_date']
-                    tokens['expiry_date'] = nearest_expiry
-                    print(f"✅ NEAREST WEEKLY EXPIRY: {nearest_expiry.strftime('%d-%b-%Y (%A)')}")
-                else:
-                    print("⚠️ No valid options found!")
-                    return tokens
-                
-                # Step 5: Find Future (nearest expiry)
-                if futures:
-                    nearest_future = futures[0]
-                    tokens['future'] = nearest_future.get('symboltoken')
-                    tokens['future_symbol'] = nearest_future.get('tradingsymbol')
-                    print(f"✅ Future: {tokens['future_symbol']} (Expiry: {nearest_future['expiry_date'].strftime('%d-%b-%Y')})")
-                
-                # Step 6: Find ATM CE and PE with nearest expiry
-                strike_str = str(atm_strike)
-                
-                # Filter options for nearest expiry only
-                nearest_expiry_options = [opt for opt in options if opt['expiry_date'] == nearest_expiry]
-                print(f"📋 Options at nearest expiry: {len(nearest_expiry_options)}")
-                
-                for opt in nearest_expiry_options:
-                    ts = opt.get('tradingsymbol', '')
-                    
-                    # Check for exact ATM strike match
-                    if strike_str in ts:
-                        if ts.endswith('CE') and not tokens['ce']:
-                            tokens['ce'] = opt.get('symboltoken')
-                            tokens['ce_symbol'] = ts
-                            print(f"✅ ATM CE: {ts} -> {tokens['ce']}")
-                        elif ts.endswith('PE') and not tokens['pe']:
-                            tokens['pe'] = opt.get('symboltoken')
-                            tokens['pe_symbol'] = ts
-                            print(f"✅ ATM PE: {ts} -> {tokens['pe']}")
+                # Update expected symbol names with actual expiry
+                ce_symbol_name = f"NIFTY{nearest_expiry_str}{atm_strike}CE"
+                pe_symbol_name = f"NIFTY{nearest_expiry_str}{atm_strike}PE"
+                print(f"🔍 Updated search targets:")
+                print(f"   CE: {ce_symbol_name}")
+                print(f"   PE: {pe_symbol_name}")
+            
+            # Step 3: Find ATM options with nearest expiry
+            for opt in nifty50_options:
+                if opt['expiry'] == nearest_expiry:
+                    if opt['symbol'] == ce_symbol_name and not tokens['ce']:
+                        tokens['ce'] = opt['token']
+                        tokens['ce_symbol'] = opt['symbol']
+                        print(f"✅ ATM CE: {opt['symbol']} -> {opt['token']}")
+                    elif opt['symbol'] == pe_symbol_name and not tokens['pe']:
+                        tokens['pe'] = opt['token']
+                        tokens['pe_symbol'] = opt['symbol']
+                        print(f"✅ ATM PE: {opt['symbol']} -> {opt['token']}")
                     
                     if tokens['ce'] and tokens['pe']:
                         break
+            
+            # Step 4: Find nearest future
+            if nifty50_futures:
+                nearest_future = min(nifty50_futures, key=lambda x: x['expiry'])
+                tokens['future'] = nearest_future['token']
+                tokens['future_symbol'] = nearest_future['symbol']
+                print(f"✅ Future: {nearest_future['symbol']} -> {nearest_future['token']}")
+            
+            # Debug: If options still not found, show available strikes for nearest expiry
+            if not (tokens['ce'] and tokens['pe']):
+                print(f"⚠️ ATM tokens not found for strike {atm_strike}")
+                available_strikes = set()
+                for opt in nifty50_options:
+                    if opt['expiry'] == nearest_expiry:
+                        match = re.match(r'NIFTY\d{2}[A-Z]{3}\d{2}(\d+)', opt['symbol'])
+                        if match:
+                            available_strikes.add(int(match.group(1)))
+                
+                if available_strikes:
+                    sorted_strikes = sorted(available_strikes)
+                    # Find closest available strike
+                    closest = min(sorted_strikes, key=lambda x: abs(x - atm_strike))
+                    print(f"📋 Closest available strike: {closest} (ATM was {atm_strike})")
+                    
+                    # Try with closest strike
+                    for opt in nifty50_options:
+                        if opt['expiry'] == nearest_expiry:
+                            if f"{closest}CE" in opt['symbol'] and not tokens['ce']:
+                                tokens['ce'] = opt['token']
+                                tokens['ce_symbol'] = opt['symbol']
+                                tokens['atm_strike'] = closest
+                                print(f"✅ Closest CE: {opt['symbol']} -> {opt['token']}")
+                            elif f"{closest}PE" in opt['symbol'] and not tokens['pe']:
+                                tokens['pe'] = opt['token']
+                                tokens['pe_symbol'] = opt['symbol']
+                                tokens['atm_strike'] = closest
+                                print(f"✅ Closest PE: {opt['symbol']} -> {opt['token']}")
                 
         except Exception as e:
             print(f"⚠️ Token search error: {e}")

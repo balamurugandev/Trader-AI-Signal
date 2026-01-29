@@ -368,3 +368,225 @@
    - **Observation**: At 3:00 PM, prices often rise due to square-offs, but premiums decay rapidly.
    - **Defense**: Implemented **Strict Trend Lock**: If Market Trend (EMA20) is SIDEWAYS/DOWN, block ALL Bullish signals, regardless of momentum.
 
+---
+
+# 🏗️ Project Setup from GitHub (Jan 30, 2026)
+
+## Fresh Setup Checklist
+When cloning/recovering the project from GitHub to a new machine:
+
+### 1. Clone Repository
+```bash
+git clone https://github.com/balamurugandev/Trader-AI-Signal.git
+cd Trader-AI-Signal
+```
+
+### 2. Install Dependencies
+```bash
+pip install -r requirements.txt
+```
+**Key packages**: `fastapi`, `uvicorn`, `pyotp`, `python-dotenv`, `pandas`, `orjson`, `smartapi-python`, `requests`
+
+### 3. Create `.env` File
+The `.env` file is **not committed to Git** (security). Create it manually:
+```bash
+# Copy from template
+cp .env.example .env
+```
+
+**Required variables:**
+```env
+API_KEY=your_angel_one_api_key
+CLIENT_ID=your_angel_one_client_id
+PASSWORD=your_angel_one_password
+TOTP_SECRET=your_totp_secret_key
+# Optional for trade logging:
+SUPABASE_URL=your_supabase_url
+SUPABASE_KEY=your_supabase_key
+```
+
+### 4. Angel One API Setup
+1. **Create SmartAPI App**: Go to [Angel One SmartAPI](https://smartapi.angelbroking.com/)
+2. **Get API Key**: Create app with Redirect URL `https://127.0.0.1`
+3. **TOTP Secret**: Enable TOTP in Angel One app → get the **alphanumeric secret key** (not the 6-digit code)
+
+### 5. Run Server
+```bash
+cd production
+python3 server.py
+```
+
+### 6. Common Startup Issues
+| Error | Cause | Fix |
+|-------|-------|-----|
+| `Invalid totp` (AB1050) | Wrong TOTP_SECRET | Use alphanumeric key from authenticator setup |
+| `Address already in use` | Port 8000 occupied | `pkill -f "server.py"` then restart |
+| `ModuleNotFoundError` | Missing packages | `pip install -r requirements.txt` |
+
+---
+
+# 🔧 Angel One Token Resolution (Jan 30, 2026)
+
+## The Problem: `searchScrip` API Failures
+- **Symptom**: ATM strike prices showed `--` in Scalping Module
+- **API Error**: "No matching trading symbols found for the given query"
+- **Rate Limit Error**: "Access denied because of exceeding access rate"
+
+## Why `searchScrip` Fails
+1. **Rate Limits**: Angel One limits to ~1 request/second. Server startup makes multiple calls, hitting limits.
+2. **Unreliable Search**: Broad searches like `"NIFTY"` return empty or incomplete results.
+3. **Exact Symbol Matching**: Searching for `"NIFTY05FEB2625400CE"` returns "no match" even when the contract exists.
+
+## The Solution: Instrument Master File
+Instead of API calls, download the **complete instrument master file**:
+
+```python
+def get_nfo_instruments():
+    """Download and cache Angel One instrument master."""
+    url = "https://margincalculator.angelbroking.com/OpenAPI_File/files/OpenAPIScripMaster.json"
+    response = requests.get(url, timeout=30)
+    all_instruments = response.json()  # ~231,000 instruments
+    
+    # Filter for NFO NIFTY only
+    nfo_instruments = [
+        inst for inst in all_instruments 
+        if inst.get('exch_seg') == 'NFO' and 'NIFTY' in inst.get('name', '').upper()
+    ]
+    return nfo_instruments  # ~4,000 instruments
+```
+
+### Key Benefits
+1. **No API Rate Limits**: Downloads once per day, cached in memory
+2. **Reliable Token Lookup**: Exact symbol matching against 231K instruments
+3. **Dynamic Expiry Discovery**: Parses actual available expiries from data
+4. **Offline Capability**: Works even if API is down
+
+## Dynamic Expiry Discovery
+**Problem**: Calculated expiry (Feb 5) may not have listed contracts yet.
+
+**Solution**: Parse available expiries from instrument master:
+```python
+# Extract all NIFTY50 options
+nifty50_options = [inst for inst in instruments if matches_nifty50_pattern(inst)]
+
+# Find unique expiry dates
+unique_expiries = sorted(set(opt['expiry'] for opt in nifty50_options))
+
+# Use nearest available expiry
+nearest_expiry = unique_expiries[0]  # e.g., Feb 3 instead of Feb 5
+```
+
+## Instrument Master JSON Format
+```json
+{
+  "token": "49801",
+  "symbol": "NIFTY03FEB2625400CE",
+  "name": "NIFTY",
+  "expiry": "03FEB2026",
+  "strike": "25400.000000",
+  "lotsize": "25",
+  "instrumenttype": "OPTIDX",
+  "exch_seg": "NFO"
+}
+```
+
+## Fallback: Closest Strike Matching
+If exact ATM strike (e.g., 25400) isn't listed, find the closest available:
+```python
+available_strikes = {25300, 25350, 25450, 25500}  # From instrument master
+atm_strike = 25400
+closest = min(available_strikes, key=lambda x: abs(x - atm_strike))  # Returns 25350 or 25450
+```
+
+---
+
+# 📊 Supabase Trade Logger Setup (Jan 30, 2026)
+
+## Purpose
+Logs all trade signals to Supabase for historical analysis and performance tracking.
+
+## Setup Steps
+
+### 1. Get Credentials from Supabase Dashboard
+1. Go to [supabase.com](https://supabase.com) → Your Project
+2. Navigate to **Project Settings** → **API**
+3. Copy:
+   - **URL**: `https://xxxxx.supabase.co`
+   - **anon public key**: `eyJhbGciOiJIUzI1NiI...`
+
+### 2. Add to `.env` File
+```env
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_KEY=your-anon-public-key
+```
+
+### 3. Verify Connection
+```bash
+# Quick test (run from project root)
+python3 -c "
+from supabase import create_client
+import os
+from dotenv import load_dotenv
+load_dotenv('.env')
+client = create_client(os.environ['SUPABASE_URL'], os.environ['SUPABASE_KEY'])
+result = client.table('trade_logs').select('*').limit(1).execute()
+print('✅ Connected! Records:', len(result.data))
+"
+```
+
+## Table Schema
+The `trade_logs` table should have these columns:
+```sql
+CREATE TABLE trade_logs (
+    id SERIAL PRIMARY KEY,
+    timestamp TIMESTAMPTZ DEFAULT NOW(),
+    spot_price DECIMAL(10,2),
+    basis DECIMAL(10,2),
+    pcr DECIMAL(5,2),
+    signal VARCHAR(50),
+    trap_reason TEXT,
+    ce_symbol VARCHAR(50),
+    pe_symbol VARCHAR(50),
+    ce_price DECIMAL(10,2),
+    pe_price DECIMAL(10,2)
+);
+```
+
+## How the Logger Works
+- **Async Queue**: Logs are added to a bounded queue (maxsize=100)
+- **Non-Blocking**: Uses `put_nowait()` - drops logs if queue full (never blocks trading)
+- **Background Worker**: Daemon thread processes queue and inserts to Supabase
+- **Fail-Safe**: If Supabase is down, trading continues unaffected
+
+## Troubleshooting
+| Issue | Cause | Fix |
+|-------|-------|-----|
+| `SUPABASE_URL missing` warning | `.env` not loaded | Check file path, restart server |
+| `supabase library missing` | Package not installed | `pip install supabase` |
+| Connection timeout | Network issue | Check internet, try again |
+| `relation "trade_logs" does not exist` | Table not created | Run CREATE TABLE SQL above |
+
+---
+
+# 📋 Quick Reference Commands
+
+```bash
+# Kill existing server
+pkill -f "server.py"
+
+# Start server
+cd production && python3 server.py
+
+# Check if port is in use
+lsof -i :8000
+
+# View server logs
+tail -f production/logs/*/app.log
+
+# Git: Restore from remote
+git fetch origin && git reset --hard origin/main
+
+# Reinstall dependencies
+pip install -r requirements.txt
+```
+
