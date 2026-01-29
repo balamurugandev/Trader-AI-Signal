@@ -590,3 +590,21 @@ git fetch origin && git reset --hard origin/main
 pip install -r requirements.txt
 ```
 
+
+# ⚡ Real-Time Architecture (Jan 30 2026)
+
+## WebSocket Insights (SmartWebSocketV2)
+1. **Exchange Types**:
+   - `1` (NSE): Works perfectly for Indices (NIFTY, BANKNIFTY).
+   - `2` (NFO): Required for Options/Futures.
+2. **Subscription Modes**:
+   - `Mode 3` (SnapQuote): Full OHLC data. Works for Indices.
+   - `Mode 1` (LTP): Lighter, only Last Traded Price. More reliable for Options streams.
+3. **Silent Failures**:
+   - Subscribing to NFO tokens often returns "Success" but sends no data loopback (likely market hours restriction or deeper API quirk).
+   - **Fix**: Always implement a **Hybrid Fallback**. If WebSocket is silent, the Polling Loop automatically ensures data flow.
+
+## Latency Display Bug
+- **Issue**: `Latency` metric stuck at `2000ms`.
+- **Cause**: Variable only updated inside `if to_fetch:` block. On cache hits (0 fetch), it became stale.
+- **Fix**: Update latency logic on **every tick**, regardless of source.

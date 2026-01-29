@@ -59,7 +59,9 @@ python3 testing/test_server.py
 
 ## 🌟 Key Features
 
-- **Real-Time Data**: Ultra-fast updates via SmartAPI WebSockets.
+- **Real-Time Data**: 
+  - **Indices**: Sub-millisecond updates via WebSocket Mode 3.
+  - **Options (NFO)**: Hybrid Engine (WebSocket Mode 1 + Parallel Polling Fallback) ensures <200ms latency.
 - **Dynamic ATM Tracking**: Automatically detects the current ATM strike and switches tokens.
 - **3-Column Professional Layout**:
   1.  **Data Engine**: Future Price, Strike Prices, and **Market Bias Meter** (Glow Effect).
