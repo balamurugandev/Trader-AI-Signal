@@ -125,6 +125,14 @@ Combines Sentiment + Trend + **OI Data** to generate signals:
 | 🔴 BEARISH | 📈 RISING | > 1.4 | **⚠️ TRAP** | `AVOID - PUT WRITING` |
 | Any | 📉 FALLING | Any | **WAIT** | `WAIT - DECAY` |
 
+### 5. 3 PM Safety Filter (End-of-Day Protection) 🛡️
+- **Issue:** Between 3:00 PM and 3:30 PM (Square-off time), "Short Covering" often causes price to rise while premiums decay, confusing standard signals.
+- **Fix:** Implemented a **Time-Gated Trend Filter**:
+    - **Active:** Only after 14:55 IST.
+    - **Logic:** Calls `get_ema_trend(spot)` (20-tick mean).
+    - **Rule:** If Price Trend is UP, BLOCK all Bearish signals. If Price Trend is DOWN, BLOCK all Bullish signals.
+- **Result:** Prevents "fighting the trend" during the volatile market close period.
+
 ---
 
 ## 🛠 Tech Stack
