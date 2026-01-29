@@ -348,3 +348,23 @@
 - **Optimization**: Removed `NIFTY SMALLCAP` to declutter the bar, updated grid to 5 columns for perfect spacing.
 - **Aesthetics**: Switched ticker font from Monospace/Bold to `Inter` (Regular/Medium) and Centered alignment to match modern UI references.
 - **Bug**: Found `ticker.css` was overriding `style.css` with `justify-content: flex-start`, causing left alignment. Fixed by updating `ticker.css`.
+
+## ⚡ Performance Optimization (Jan 30 2026)
+1. **The `orjson` Binary Frame Trap**
+   - **Issue**: Switched to `orjson` for speed, but frontend disconnected with "Connect Error".
+   - **Root Cause**: `orjson.dumps()` returns **bytes** (Binary Frame). The browser's `WebSocket.onmessage` receives a `Blob` instead of text, which standard `JSON.parse` cannot decode.
+   - **Fix**: Explicitly decode to string before sending: `await websocket.send_text(orjson.dumps(data).decode('utf-8'))`. This retains serialization speed while ensuring frontend compatibility.
+
+2. **Persistent ThreadPools**
+   - **Bad Pattern**: Creating `ThreadPoolExecutor()` inside a `while True` loop (1Hz) generates massive overhead (thread creation/destruction).
+   - **Good Pattern**: Initialize `executor = ThreadPoolExecutor()` *once* outside the loop and reuse it via `executor.submit()`.
+
+## 🧠 Logic Calibration Insights (V7)
+1. **Velocity vs. Premium**
+   - **Mistake**: Setting Velocity threshold to `3.0 pts/s` (too high). NIFTY moves gradually, often `0.5 - 0.7 pts/s` during trends.
+   - **Adjustment**: Lowered to `0.4 pts/s`. This captures real momentum without filtering out valid Scalping Zones.
+
+2. **The "Short Covering" Illusion**
+   - **Observation**: At 3:00 PM, prices often rise due to square-offs, but premiums decay rapidly.
+   - **Defense**: Implemented **Strict Trend Lock**: If Market Trend (EMA20) is SIDEWAYS/DOWN, block ALL Bullish signals, regardless of momentum.
+

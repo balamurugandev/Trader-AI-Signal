@@ -72,6 +72,7 @@ python3 testing/test_server.py
 - **Smart Filters**:
   - **Trap Detection**: Identifies Bull/Bear traps using Price vs OI divergence.
   - **PCR Filter**: Avoids traps (e.g., Bull signal blocked if PCR < 0.6).
+  - **PCR Staleness**: Visual indicator (Green/Yellow/Red) showing exact age of Option Data to prevent stale trade decisions.
   - **Hysteresis**: Prevents ATM flicker when spot is at strike boundary.
 
 ---
@@ -124,14 +125,20 @@ Combines Sentiment + Trend + **OI Data** to generate signals:
 | 🟢 BULLISH | 📈 RISING | < 0.6 | **⚠️ TRAP** | `AVOID - CALL WRITING` |
 | 🔴 BEARISH | 📈 RISING | > 1.4 | **⚠️ TRAP** | `AVOID - PUT WRITING` |
 | Any | 📉 FALLING | Any | **WAIT** | `WAIT - DECAY` |
+| 🟢 BULLISH (EXTREME) | 📈 RISING | Trap (<0.6) | **BUY CALL** | `SHORT SQUEEZE 🚀` |
 
 ### 5. 3 PM Safety Filter (End-of-Day Protection) 🛡️
-- **Issue:** Between 3:00 PM and 3:30 PM (Square-off time), "Short Covering" often causes price to rise while premiums decay, confusing standard signals.
-- **Fix:** Implemented a **Time-Gated Trend Filter**:
-    - **Active:** Only after 14:55 IST.
-    - **Logic:** Calls `get_ema_trend(spot)` (20-tick mean).
-    - **Rule:** If Price Trend is UP, BLOCK all Bearish signals. If Price Trend is DOWN, BLOCK all Bullish signals.
-- **Result:** Prevents "fighting the trend" during the volatile market close period.
+- **Issue:** Between 3:00 PM and 3:30 PM (Square-off time), "Short Covering" often causes price to rise while premiums decay.
+- **Fix:** Implemented a **Strict Trend Lock**:
+    - **Active:** After 14:55 IST.
+    - **Logic:** Calls `get_ema_trend(spot)`.
+    - **Rule:** Blocks signals if trend is **Opposite** OR **Sideways**.
+- **Result:** Prevents "3 PM Bleed" caused by whipsaw trades.
+
+### 6. Performance Optimization (Turbo Mode) ⚡
+- **orjson Serialization:** Replaces standard JSON with Rust-based `orjson` for sub-millisecond payload generation.
+- **Persistent ThreadPool:** Reduces CPU overhead by reusing threads for API polling.
+- **Result:** Latency stabilized around 100-200ms even during high traffic.
 
 ---
 

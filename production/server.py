@@ -5,6 +5,7 @@ FastAPI backend with WebSocket for real-time data streaming
 
 import asyncio
 import json
+import orjson # Optimized JSON library
 import threading
 import time
 from collections import deque
@@ -695,6 +696,9 @@ def update_scalping_data():
     atm_shift_count = 0
     poll_count = 0
     
+    # OPTIMIZATION: Persistent Thread Pool
+    executor = ThreadPoolExecutor(max_workers=3)
+    
     while True:
         try:
             # CRITICAL: Record loop start time for precise 1Hz timing
@@ -803,27 +807,27 @@ def update_scalping_data():
                 missing_tokens.append(('pe', pe_symbol, atm_pe_token))
 
             if missing_tokens:
-                with ThreadPoolExecutor(max_workers=3) as executor:
-                    futures_map = {
-                        item[0]: executor.submit(fetch_ltp, smart_api_global, "NFO", item[1], item[2]) 
-                        for item in missing_tokens
-                    }
-                    
-                    if 'fut' in futures_map: 
-                        result = futures_map['fut'].result()
-                        if result: 
-                            fut_ltp = result
-                            last_future_price = result
-                    if 'ce' in futures_map: 
-                        result = futures_map['ce'].result()
-                        if result:
-                            ce_ltp = result
-                            last_ce_price = result
-                    if 'pe' in futures_map:
-                        result = futures_map['pe'].result()
-                        if result:
-                            pe_ltp = result
-                            last_pe_price = result
+                # OPTIMIZATION: Use persistent executor (Reuse threads)
+                futures_map = {
+                    item[0]: executor.submit(fetch_ltp, smart_api_global, "NFO", item[1], item[2]) 
+                    for item in missing_tokens
+                }
+                
+                if 'fut' in futures_map: 
+                    result = futures_map['fut'].result()
+                    if result: 
+                        fut_ltp = result
+                        last_future_price = result
+                if 'ce' in futures_map: 
+                    result = futures_map['ce'].result()
+                    if result:
+                        ce_ltp = result
+                        last_ce_price = result
+                if 'pe' in futures_map:
+                    result = futures_map['pe'].result()
+                    if result:
+                        pe_ltp = result
+                        last_pe_price = result
                             
             # FORWARD FILL: Ensure we always have values for calculation
             # If we didn't fetch it this tick, use the last known value
@@ -1422,7 +1426,10 @@ async def websocket_endpoint(websocket: WebSocket):
                     "news": news_engine.latest_news_str
                     # ^^^ NEWS ENGINE INTEGRATION ^^^
                 }
-            await websocket.send_json(data)
+            # OPTIMIZATION: Use orjson for faster serialization
+            # await websocket.send_json(data)
+            # FIX: Decode bytes to utf-8 string to send as TEXT frame (Frontend compatibility)
+            await websocket.send_text(orjson.dumps(data).decode('utf-8'))
             await asyncio.sleep(0.1)  # 100ms update
     except WebSocketDisconnect:
         connected_clients.discard(websocket)
