@@ -917,8 +917,8 @@ def update_scalping_data():
                 current_atm = current_atm_strike
             
             # HYBRID DATA FETCHING (V10 Optimization)
-            # 1. Check WebSocket Cache (0ms Latency)
-            # 2. Fallback to Parallel Polling (~300ms Latency)
+            # 1. Check WebSocket Cache (0ms Latency) - if available
+            # 2. Parallel Polling (~200ms Latency) - Fetch ALL missing tokens concurrently
             
             fetch_start_time = time.time() # Measure RTT
             
@@ -926,47 +926,36 @@ def update_scalping_data():
             ce_ltp = ticker_data.get(atm_ce_token, {}).get('ltp') if atm_ce_token else None
             pe_ltp = ticker_data.get(atm_pe_token, {}).get('ltp') if atm_pe_token else None
             
-            # STAGGERED POLLING (Round-Robin)
-            # Fetch 1 token every second to maintain 1Hz RTT updates and continuous data flow
-            # This is better than "Burst every 5s" as it prevents 4s latency freeze
-            global poll_counter
-            if 'poll_counter' not in globals(): poll_counter = 0
-            
-            token_types = ['fut', 'ce', 'pe']
-            target_type = token_types[poll_counter % 3]
-            poll_counter += 1
-            
-            missing_tokens = []
-            # Only add the TARGET token to missing list (if not provided by WS)
-            if target_type == 'fut' and not fut_ltp and future_token: 
-                missing_tokens.append(('fut', future_symbol, future_token))
-            elif target_type == 'ce' and not ce_ltp and atm_ce_token: 
-                missing_tokens.append(('ce', ce_symbol, atm_ce_token))
-            elif target_type == 'pe' and not pe_ltp and atm_pe_token: 
-                missing_tokens.append(('pe', pe_symbol, atm_pe_token))
+            # Identify which tokens need fetching (not in WS cache)
+            to_fetch = []
+            if not fut_ltp and future_token: to_fetch.append(('fut', future_symbol, future_token))
+            if not ce_ltp and atm_ce_token: to_fetch.append(('ce', ce_symbol, atm_ce_token))
+            if not pe_ltp and atm_pe_token: to_fetch.append(('pe', pe_symbol, atm_pe_token))
 
-            if missing_tokens:
-                # OPTIMIZATION: Use persistent executor (Reuse threads)
+            if to_fetch:
+                # OPTIMIZATION: Parallel Fetch (Global Standard)
+                # Fetch all missing tokens in parallel using persistent executor
                 futures_map = {
                     item[0]: executor.submit(fetch_ltp, smart_api_global, "NFO", item[1], item[2]) 
-                    for item in missing_tokens
+                    for item in to_fetch
                 }
                 
-                if 'fut' in futures_map: 
-                    result = futures_map['fut'].result()
-                    if result: 
-                        fut_ltp = result
-                        last_future_price = result
-                if 'ce' in futures_map: 
-                    result = futures_map['ce'].result()
-                    if result:
-                        ce_ltp = result
-                        last_ce_price = result
-                if 'pe' in futures_map:
-                    result = futures_map['pe'].result()
-                    if result:
-                        pe_ltp = result
-                        last_pe_price = result
+                # Wait for all to complete (or timeout handled by fetch_ltp)
+                for key, future in futures_map.items():
+                    try:
+                        result = future.result()
+                        if result:
+                            if key == 'fut':
+                                fut_ltp = result
+                                last_future_price = result
+                            elif key == 'ce':
+                                ce_ltp = result
+                                last_ce_price = result
+                            elif key == 'pe':
+                                pe_ltp = result
+                                last_pe_price = result
+                    except Exception as e:
+                        print(f"⚠️ Parallel fetch error for {key}: {e}")
                             
             # FORWARD FILL: Ensure we always have values for calculation
             # If we didn't fetch it this tick, use the last known value
@@ -974,10 +963,9 @@ def update_scalping_data():
             if not ce_ltp and last_ce_price: ce_ltp = last_ce_price
             if not pe_ltp and last_pe_price: pe_ltp = last_pe_price
             
-            # Update RTT Latency (Updates every second now!)
+            # Update RTT Latency (Updates every second)
             fetch_end_time = time.time()
-            # We check if we actually attempted a fetch (missing_tokens not empty)
-            if missing_tokens:
+            if to_fetch:
                  # Calculate RTT in MS
                  rtt_ms = (fetch_end_time - fetch_start_time) * 1000
                  
@@ -1569,7 +1557,7 @@ async def websocket_endpoint(websocket: WebSocket):
             # await websocket.send_json(data)
             # FIX: Decode bytes to utf-8 string to send as TEXT frame (Frontend compatibility)
             await websocket.send_text(orjson.dumps(data).decode('utf-8'))
-            await asyncio.sleep(0.1)  # 100ms update
+            await asyncio.sleep(0.05)  # 50ms update (20Hz) - GLOBAL STANDARD
     except WebSocketDisconnect:
         connected_clients.discard(websocket)
     except Exception:

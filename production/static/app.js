@@ -279,11 +279,15 @@ function updateStatus(status) {
     }
 }
 
+// CACHED FORMATTER (Optimization)
+const currencyFormatter = new Intl.NumberFormat('en-IN', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+});
+
 function formatPrice(price) {
-    return price.toLocaleString('en-IN', {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2
-    });
+    if (price === undefined || price === null) return '--';
+    return currencyFormatter.format(price);
 }
 
 function updateTickTable(ticks) {
@@ -566,7 +570,21 @@ async function updateScalper() {
     }
 }
 
+// OPTIMIZATION: RequestAnimationFrame Wrapper (60fps Limit)
+let pendingScalperData = null;
+let scalperRafId = null;
+
 function updateScalperUI(data) {
+    if (!data) return;
+    pendingScalperData = data;
+    if (!scalperRafId) {
+        scalperRafId = requestAnimationFrame(renderScalperUI);
+    }
+}
+
+function renderScalperUI() {
+    const data = pendingScalperData;
+    scalperRafId = null;
     if (!data) return;
 
     // Update status
