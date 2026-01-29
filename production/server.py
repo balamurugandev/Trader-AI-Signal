@@ -292,6 +292,52 @@ def lookup_and_subscribe_indices(smart_api):
             
     return tokens_to_sub
 
+# Use a set to track actively subscribed scalping tokens to avoid duplicates
+active_scalping_tokens = set()
+
+def update_scalping_subscriptions(future_tok, ce_tok, pe_tok):
+    """
+    Dynamically subscribe to new scalping tokens (Future, CE, PE).
+    This ensures TRUE real-time data via WebSocket (Mode 3).
+    """
+    global active_scalping_tokens, sws, ws_connected
+    
+    # 1. Identify valid tokens
+    current_tokens = set()
+    if future_tok: current_tokens.add(future_tok)
+    if ce_tok: current_tokens.add(ce_tok)
+    if pe_tok: current_tokens.add(pe_tok)
+    
+    if not current_tokens: return
+
+    # 2. Determine NEW tokens that need subscription
+    new_tokens = current_tokens - active_scalping_tokens
+    
+    if not new_tokens: return
+    
+    print(f"📡 Real-Time Socket: Subscribing to {new_tokens}")
+    
+    # 3. Subscribe if WebSocket is active
+    if sws and ws_connected:
+        try:
+            # NFO Exchange Type is 2
+            token_list = [{"exchangeType": 2, "tokens": list(new_tokens)}]
+            sws.subscribe("scalping_stream", 3, token_list)
+            
+            # Update active set
+            active_scalping_tokens.update(new_tokens)
+            
+            # CRITICAL: Update token_map so on_data processes these messages!
+            # Map token_id -> token_id (Self-mapping for lookup)
+            for t in new_tokens:
+                 token_map[t] = t
+                 
+            print(f"✅ Subscribed successfully to {len(new_tokens)} options/futures")
+        except Exception as e:
+            print(f"⚠️ Subscription Failed: {e}")
+            # Do not update active_set so we retry next time
+
+
 def request_exchange_type(token):
     # Heuristic: BSE tokens likely stored separately or mapped?
     # For now, simplistic approach:
@@ -827,6 +873,9 @@ def update_scalping_data():
     current_expiry = tokens.get('expiry_date')
     last_token_refresh_date = datetime.utcnow().date() # Track refresh date for rollover
     
+    # DYNAMIC SUBSCRIPTION (V11): Subscribe to NFO tokens for Real-Time WebSocket Data!
+    update_scalping_subscriptions(future_token, atm_ce_token, atm_pe_token)
+    
     print(f"📈 Scalping ready: ATM={current_atm_strike}, Expiry={current_expiry}")
     
     last_straddle_prices = deque(maxlen=5)  # For trend detection
@@ -908,6 +957,9 @@ def update_scalping_data():
                 current_ce_symbol = ce_symbol
                 current_pe_symbol = pe_symbol
                 
+                # DYNAMIC SUBSCRIPTION (V11): Subscribe to new ATM tokens
+                update_scalping_subscriptions(future_token, atm_ce_token, atm_pe_token)
+                
                 # Clear straddle history on ATM change
                 if new_atm != current_atm_strike:
                     last_straddle_prices.clear()
@@ -922,9 +974,9 @@ def update_scalping_data():
             
             fetch_start_time = time.time() # Measure RTT
             
-            fut_ltp = ticker_data.get(future_token, {}).get('ltp') if future_token else None
-            ce_ltp = ticker_data.get(atm_ce_token, {}).get('ltp') if atm_ce_token else None
-            pe_ltp = ticker_data.get(atm_pe_token, {}).get('ltp') if atm_pe_token else None
+            fut_ltp = ticker_data.get(future_token, {}).get('price') if future_token else None
+            ce_ltp = ticker_data.get(atm_ce_token, {}).get('price') if atm_ce_token else None
+            pe_ltp = ticker_data.get(atm_pe_token, {}).get('price') if atm_pe_token else None
             
             # Identify which tokens need fetching (not in WS cache)
             to_fetch = []
