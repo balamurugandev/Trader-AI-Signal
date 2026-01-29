@@ -154,13 +154,18 @@ function updateDashboard(data) {
                     const item = document.createElement('div');
                     item.className = 'news-item';
 
-                    // Parse "Headline|Source"
+                    // Parse "Headline###Source"
                     let title = head;
                     let source = "";
-                    if (head.includes('|')) {
-                        const parts = head.split('|');
+                    if (head.includes('###')) {
+                        const parts = head.split('###');
                         title = parts[0];
                         source = parts[1];
+                    } else if (head.includes('|')) {
+                        // Fallback for any cached old data
+                        const parts = head.split('|');
+                        title = parts[0];
+                        source = parts[1] || "";
                     }
 
                     // Clean symbols

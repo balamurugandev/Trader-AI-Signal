@@ -13,7 +13,7 @@ latest_news_str = "⌛ Initializing News Feed..."
 
 # Configuration
 RSS_URL = "https://news.google.com/rss/search?q=(Nifty+OR+Sensex+OR+Bank+Nifty)+AND+(RBI+OR+GDP+OR+Budget+OR+Quarterly+Results+OR+Q3+Results+OR+Earnings)&hl=en-IN&gl=IN&ceid=IN:en"
-FETCH_INTERVAL = 300  # 5 Minutes
+FETCH_INTERVAL = 60  # 1 Minute (Dynamic Updates)
 
 def fetch_news():
     """
@@ -57,8 +57,8 @@ def fetch_news():
                     
                     # Deduplication
                     if title not in seen_titles:
-                        # Store as "Headline|Source" for frontend parsing
-                        headlines.append(f"{title}|{source}")
+                        # Store as "Headline###Source" for frontend parsing
+                        headlines.append(f"{title}###{source}")
                         seen_titles.add(title)
                     
                     if len(headlines) >= 10: # Increased to 10
