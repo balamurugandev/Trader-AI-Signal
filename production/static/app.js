@@ -596,10 +596,10 @@ function renderScalperUI() {
     const scalping = data.scalping || data;
 
     // Helper to flash element on change (Moved to top to avoid ReferenceError)
-    const updateAndFlash = (element, newValue) => {
+    const updateAndFlash = (element, newValue, color = 'var(--accent-blue)') => {
         if (!element || element.textContent === newValue) return;
         element.textContent = newValue;
-        element.style.color = 'var(--accent-yellow)';
+        element.style.color = color;
         element.style.transition = 'none';
 
         // Force reflow
@@ -607,7 +607,7 @@ function renderScalperUI() {
 
         element.style.transition = 'color 1s ease';
         setTimeout(() => {
-            element.style.color = 'var(--accent-yellow)';
+            element.style.color = color;
         }, 50);
     };
 
@@ -657,9 +657,7 @@ function renderScalperUI() {
 
     // Update Straddle Value with SMA indicator
     if (straddleValue && scalping.straddle_price !== undefined) {
-        // SMA3 is inferred or needs to be passed. If missing, we skip it.
-        const smaIndicator = '';
-        straddleValue.textContent = `₹${formatPrice(scalping.straddle_price)}`;
+        updateAndFlash(straddleValue, `₹${formatPrice(scalping.straddle_price)}`);
     }
 
     // ================================================================
@@ -768,13 +766,13 @@ function renderScalperUI() {
     // Helper to flash element on change (Moved to top)
 
     if (data.ce_symbol) {
-        if (ceStrikeEl) updateAndFlash(ceStrikeEl, formatSymbol(data.ce_symbol));
+        if (ceStrikeEl) updateAndFlash(ceStrikeEl, formatSymbol(data.ce_symbol), 'var(--accent-yellow)');
     } else if (data.atm_strike && ceStrikeEl) {
         ceStrikeEl.textContent = `${data.atm_strike} CE`; // Fallback with CE
     }
 
     if (data.pe_symbol) {
-        if (peStrikeEl) updateAndFlash(peStrikeEl, formatSymbol(data.pe_symbol));
+        if (peStrikeEl) updateAndFlash(peStrikeEl, formatSymbol(data.pe_symbol), 'var(--accent-yellow)');
     } else if (data.atm_strike && peStrikeEl) {
         peStrikeEl.textContent = `${data.atm_strike} PE`; // Fallback with PE
     }
