@@ -1,8 +1,8 @@
 /* Ticker Tape - Official Broker Style (Inline Compact) */
 .ticker-tape {
     display: grid;
-    /* Responsive Grid: 3 columns on desktop */
-    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    /* Phase 61: Exact 50/50 split for Nifty/VIX */
+    grid-template-columns: 1fr 1fr;
     gap: 16px;
     padding: 0;
     width: 100%;

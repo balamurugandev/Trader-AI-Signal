@@ -234,14 +234,13 @@ function updateTickerTape(tickers) {
     // BUT resetting innerHTML might kill scroll position. Let's update intelligently.
 
     // indices mapping
-    const indices = ['nifty', 'sensex', 'banknifty', 'midcpnifty', 'indiavix'];
+    const indices = ['nifty', 'indiavix'];
     const displayNames = {
-        'nifty': 'NIFTY 50', 'sensex': 'SENSEX', 'banknifty': 'BANKNIFTY',
-        'midcpnifty': 'MIDCPNIFTY', 'indiavix': 'INDIA VIX'
+        'nifty': 'NIFTY 50', 'indiavix': 'INDIA VIX'
     };
 
-    // Check if structure exists, if not create it (FIRST RUN)
-    if (tickerContainer.children.length === 0 || tickerContainer.getAttribute('data-init') !== 'true') {
+    // Check if structure exists, if not create it (FIRST RUN) OR if mismatch (e.g. index removal)
+    if (tickerContainer.children.length === 0 || tickerContainer.children.length !== indices.length || tickerContainer.getAttribute('data-init') !== 'true') {
         tickerContainer.innerHTML = indices.map(key => {
             const data = tickers[key];
             if (!data) return '';
@@ -897,15 +896,11 @@ function updateTickerTape(tickers) {
     // Map keys to display names
     const displayNames = {
         'nifty': 'NIFTY 50',
-        'sensex': 'SENSEX',
-        'banknifty': 'BANKNIFTY',
-        'midcpnifty': 'MIDCPNIFTY',
-        'indiavix': 'INDIA VIX',
-        'niftysmallcap': 'SMALLCAP'
+        'indiavix': 'INDIA VIX'
     };
 
-    // Order matters
-    const order = ['nifty', 'sensex', 'banknifty', 'midcpnifty', 'indiavix'];
+    // Use a specific order
+    const order = ['nifty', 'indiavix'];
 
     // If tape is empty (first run), enable it
     if (tapeContainer.children.length === 0 || tapeContainer.querySelector('.ticker-item-static')) {

@@ -18,7 +18,7 @@ from typing import Optional, List, Set
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import HTMLResponse, FileResponse
+from fastapi.responses import HTMLResponse, FileResponse, JSONResponse, RedirectResponse
 import pandas as pd
 import pyotp
 from dotenv import load_dotenv
@@ -188,9 +188,6 @@ ticker_data = {
 # Pre-populate with KNOWN Index Tokens for Accuracy
 token_map = {
     "99926000": "nifty",       # Nifty 50
-    "99926009": "banknifty",   # Bank Nifty
-    "99919000": "sensex",      # Sensex
-    "99926074": "midcpnifty",  # Nifty Midcap 100
     "99926017": "indiavix"     # India VIX
 }
 
@@ -201,9 +198,7 @@ def lookup_and_subscribe_indices(smart_api):
     global token_map, ws_connected, sws
     
     # We only need to search for Smallcap or verify hardcoded ones
-    targets = [
-        {"key": "niftysmallcap", "queries": ["NIFTY SMALLCAP 100", "NIFTYSMLCAP100"], "exch": "NSE"}
-    ]
+    targets = []
     
     tokens_to_sub = list(token_map.keys())
     
@@ -1708,9 +1703,21 @@ static_path = Path(__file__).parent / "static"
 static_path.mkdir(exist_ok=True)
 app.mount("/static", StaticFiles(directory=str(static_path)), name="static")
 
-@app.get("/", response_class=HTMLResponse)
+@app.get("/", response_class=RedirectResponse)
 async def root():
-    return FileResponse(static_path / "index.html")
+    return RedirectResponse(url="/dashboard", status_code=307)
+
+@app.get("/index.html", response_class=RedirectResponse)
+async def root_legacy():
+    return RedirectResponse(url="/dashboard", status_code=307)
+
+@app.get("/dashboard", response_class=HTMLResponse)
+async def dashboard():
+    response = FileResponse(static_path / "dashboard.html")
+    response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["Expires"] = "0"
+    return response
 
 @app.get("/api/status")
 async def get_status():
