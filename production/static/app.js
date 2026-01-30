@@ -133,6 +133,11 @@ function updateDashboard(data) {
     // Update signal
     updateSignal(data.signal, data.candles_count);
 
+    // CRITICAL FIX: Render Scalping Data (Future/Options) from WebSocket
+    if (data.scalping) {
+        updateScalperUI(data);
+    }
+
     // Update News Ticker
     // Update News Ticker (List View)
     if (data.news && newsTicker) {
@@ -587,37 +592,55 @@ function renderScalperUI() {
     scalperRafId = null;
     if (!data) return;
 
+    // Extract nested scalping data (WebSocket) or use root (API Polling)
+    const scalping = data.scalping || data;
+
+    // Helper to flash element on change (Moved to top to avoid ReferenceError)
+    const updateAndFlash = (element, newValue) => {
+        if (!element || element.textContent === newValue) return;
+        element.textContent = newValue;
+        element.style.color = 'var(--accent-yellow)';
+        element.style.transition = 'none';
+
+        // Force reflow
+        void element.offsetWidth;
+
+        element.style.transition = 'color 1s ease';
+        setTimeout(() => {
+            element.style.color = 'var(--accent-yellow)';
+        }, 50);
+    };
+
     // Update status
     if (scalpingStatus) {
-        scalpingStatus.textContent = data.status;
-        scalpingStatus.classList.toggle('live', data.status === 'LIVE');
+        scalpingStatus.textContent = scalping.status || 'CONNECTING...';
+        scalpingStatus.classList.toggle('live', scalping.status === 'LIVE');
     }
 
-    // Update prices
     // Update prices (Dynamic Flash)
-    if (futurePrice && data.future_price !== null) {
-        updateAndFlash(futurePrice, `₹${formatPrice(data.future_price)}`);
+    if (futurePrice && scalping.future_price !== undefined) {
+        updateAndFlash(futurePrice, `₹${formatPrice(scalping.future_price)}`);
     }
-    if (cePrice && data.ce_price !== null) {
-        updateAndFlash(cePrice, `₹${formatPrice(data.ce_price)}`);
+    if (cePrice && scalping.ce_price !== undefined) {
+        updateAndFlash(cePrice, `₹${formatPrice(scalping.ce_price)}`);
     }
-    if (pePrice && data.pe_price !== null) {
-        updateAndFlash(pePrice, `₹${formatPrice(data.pe_price)}`);
+    if (pePrice && scalping.pe_price !== undefined) {
+        updateAndFlash(pePrice, `₹${formatPrice(scalping.pe_price)}`);
     }
 
-    // Update Candle Count
+    // Update Candle Count (Top Level)
     if (candlesCountEl && data.candles_count !== undefined) {
         candlesCountEl.textContent = `${data.candles_count}/200`;
     }
 
-    // Update Ticker Tape (New)
+    // Update Ticker Tape (Top Level)
     if (data.tickers) {
         updateTickerTape(data.tickers);
     }
 
     // Update Real Basis (Synthetic) with gauge and sentiment
-    const displayBasis = data.real_basis !== null ? data.real_basis : data.basis;
-    if (basisValue && displayBasis !== null) {
+    const displayBasis = scalping.real_basis !== undefined ? scalping.real_basis : scalping.basis;
+    if (basisValue && displayBasis !== undefined) {
         basisValue.textContent = (displayBasis >= 0 ? '+' : '') + displayBasis.toFixed(2);
         basisValue.classList.remove('positive', 'negative');
         basisValue.classList.add(displayBasis >= 0 ? 'positive' : 'negative');
@@ -632,18 +655,19 @@ function renderScalperUI() {
         }
     }
 
-    // Update Straddle value with SMA indicator
-    if (straddleValue && data.straddle_price !== null) {
-        const smaIndicator = data.sma3 ? ` (SMA: ${data.sma3.toFixed(2)})` : '';
-        straddleValue.textContent = `₹${formatPrice(data.straddle_price)}`;
+    // Update Straddle Value with SMA indicator
+    if (straddleValue && scalping.straddle_price !== undefined) {
+        // SMA3 is inferred or needs to be passed. If missing, we skip it.
+        const smaIndicator = '';
+        straddleValue.textContent = `₹${formatPrice(scalping.straddle_price)}`;
     }
 
     // ================================================================
     // DYNAMIC SCALING & TREND-COLORED CHART
     // ================================================================
-    if (straddleChart && data.history && data.history.length > 0) {
+    if (straddleChart && scalping.history && scalping.history.length > 0) {
         // Fix: Filter history FIRST to ensure 1:1 mapping of Labels vs Data
-        const validHistory = data.history.filter(h => h.straddle !== null && h.straddle > 0);
+        const validHistory = scalping.history.filter(h => h.straddle !== null && h.straddle > 0);
 
         // Slice last 40 points for "Ultra Fast" zoom
         const recentHistory = validHistory.slice(-40);
@@ -661,7 +685,7 @@ function renderScalperUI() {
         }
 
         // TREND-BASED LINE COLOR
-        const trend = data.trend || 'FLAT';
+        const trend = scalping.trend || 'FLAT';
         let lineColor = '#ffaa00';
         let fillColor = 'rgba(255, 170, 0, 0.05)';
 
@@ -685,15 +709,16 @@ function renderScalperUI() {
     if (scalpingSignalBox) {
         scalpingSignalBox.classList.remove('wait', 'buy-call', 'buy-put');
 
-        const sentiment = data.sentiment || 'NEUTRAL';
-        const trend = data.trend || 'FLAT';
+        const sentiment = scalping.sentiment || 'NEUTRAL';
+        const trend = scalping.trend || 'FLAT';
+        const signal = scalping.signal || 'WAIT';
 
-        if (data.signal === 'BUY CALL') {
+        if (signal === 'BUY CALL') {
             scalpingSignalBox.classList.add('buy-call');
             scalpSignalIcon.textContent = '🟢';
             scalpSignalText.textContent = 'BUY CALL';
             scalpSignalDesc.textContent = `${sentiment} + ${trend} Straddle → CALL Entry`;
-        } else if (data.signal === 'BUY PUT') {
+        } else if (signal === 'BUY PUT') {
             scalpingSignalBox.classList.add('buy-put');
             scalpSignalIcon.textContent = '🔴';
             scalpSignalText.textContent = 'BUY PUT';
@@ -740,23 +765,7 @@ function renderScalperUI() {
     const ceStrikeEl = document.getElementById('ce-strike');
     const peStrikeEl = document.getElementById('pe-strike');
 
-    // Helper to flash element on change
-    const updateAndFlash = (element, newValue) => {
-        if (!element || element.textContent === newValue) return;
-        element.textContent = newValue;
-        element.style.color = 'var(--accent-yellow)';
-        element.style.transition = 'none';
-
-        // Force reflow
-        void element.offsetWidth;
-
-        element.style.transition = 'color 1s ease';
-        setTimeout(() => {
-            element.style.color = 'var(--accent-yellow)'; // Keep it yellow or revert to default?
-            // User wants it dynamic. Let's keep it yellow (like in screenshot) or revert.
-            // Screenshot has it yellow.
-        }, 50);
-    };
+    // Helper to flash element on change (Moved to top)
 
     if (data.ce_symbol) {
         if (ceStrikeEl) updateAndFlash(ceStrikeEl, formatSymbol(data.ce_symbol));

@@ -308,8 +308,7 @@ def update_scalping_subscriptions(future_tok, ce_tok, pe_tok):
     if ce_tok: current_tokens.add(ce_tok)
     if pe_tok: current_tokens.add(pe_tok)
     
-    if not current_tokens: return
-
+    print(f"📡 DEBUG: Calculating new tokens. Current: {current_tokens}, Active: {active_scalping_tokens}")
     # 2. Determine NEW tokens that need subscription
     new_tokens = current_tokens - active_scalping_tokens
     
@@ -321,8 +320,9 @@ def update_scalping_subscriptions(future_tok, ce_tok, pe_tok):
     if sws and ws_connected:
         try:
             # NFO Exchange Type is 2
+            # Use Mode 3 (Full Quote) for reliability as Mode 1 (LTP) might be silent
             token_list = [{"exchangeType": 2, "tokens": list(new_tokens)}]
-            sws.subscribe("scalping_ltp", 1, token_list)
+            sws.subscribe("scalping_quote", 3, token_list)
             
             # Update active set
             active_scalping_tokens.update(new_tokens)
@@ -332,10 +332,12 @@ def update_scalping_subscriptions(future_tok, ce_tok, pe_tok):
             for t in new_tokens:
                  token_map[t] = t
                  
-            print(f"✅ Subscribed successfully to {len(new_tokens)} options/futures")
+            print(f"✅ Subscribed (Mode 3) successfully to {len(new_tokens)} options/futures")
         except Exception as e:
             print(f"⚠️ Subscription Failed: {e}")
             # Do not update active_set so we retry next time
+    else:
+        print(f"⚠️ Warning: WebSocket not connected (sws={sws}, connected={ws_connected})")
 
 
 def request_exchange_type(token):
@@ -487,6 +489,32 @@ def get_nfo_instruments():
         print(f"⚠️ Failed to download instrument master: {e}")
         return []
 
+def search_token_via_api(smart_api, exchange, symbol):
+    """
+    Fallback mechanism: Retrieve token directly from Broker API 
+    when Instrument Master File is unavailable.
+    """
+    try:
+        # print(f"🔎 Searching API for {symbol}...")
+        # Note: Angel One searchScrip method signature usually: searchScrip(exchange, searchscrip)
+        response = smart_api.searchScrip(exchange=exchange, searchscrip=symbol)
+        
+        if response and response.get('status') and response.get('data'):
+            for item in response['data']:
+                # Strict Match on Trading Symbol
+                if item.get('symbol') == symbol or item.get('tradingsymbol') == symbol:
+                    # print(f"✅ API Found: {symbol} -> {item['symboltoken']}")
+                    return item['symboltoken']
+                    
+            # Relaxation: If only one result, take it?
+            if len(response['data']) == 1:
+                return response['data'][0]['symboltoken']
+                
+    except Exception as e:
+        print(f"⚠️ API Search Error for {symbol}: {e}")
+    
+    return None
+
 def get_option_tokens(smart_api, spot_price: float) -> dict:
     """
     Dynamically fetch tokens for NIFTY Future and ATM CE/PE options.
@@ -500,6 +528,7 @@ def get_option_tokens(smart_api, spot_price: float) -> dict:
     global scalping_status
     from datetime import datetime, timedelta, time as dt_time
     from concurrent.futures import ThreadPoolExecutor # For parallel API calls
+    import calendar # Import strictly here
     
     try:
         scalping_status = "Fetching instrument tokens..."
@@ -570,15 +599,138 @@ def get_option_tokens(smart_api, spot_price: float) -> dict:
             print(f"   PE: {pe_symbol_name}")
             print(f"   FUT: {fut_symbol_name}")
             
-            # INSTRUMENT MASTER FILE LOOKUP (No API calls required!)
+            # CRITICAL FIX: Define instruments!
             instruments = get_nfo_instruments()
             
-            if not instruments:
-                print("⚠️ Instrument master not available")
+            tokens['ce_symbol'] = ce_symbol_name
+            tokens['pe_symbol'] = pe_symbol_name
+            tokens['future_symbol'] = fut_symbol_name
+            
+            # FALLBACK LOGIC: If Master File fails OR logic fails to populate tokens
+            # We use a BROAD SEARCH to discover the actual available expiries (handling holidays automatically)
+            
+            missing_tokens = []
+            if not instruments: missing_tokens = ['future', 'ce', 'pe']
+            else:
+                 if not tokens['future']: missing_tokens.append('future')
+                 if not tokens['ce']: missing_tokens.append('ce')
+                 if not tokens['pe']: missing_tokens.append('pe')
+            
+            if missing_tokens:
+                print(f"⚠️ Tokens missing ({missing_tokens}). Initiating BROAD API DISCOVERY...")
+                
+                try:
+                    # Broad search for all NIFTY contracts
+                    # This avoids manual date calculation errors (e.g. holidays) by seeing what actually exists
+                    search_res = smart_api.searchScrip(exchange="NFO", searchscrip="NIFTY")
+                    
+                    if search_res and search_res.get('status') and search_res.get('data'):
+                        print(f"✅ Broad Search found {len(search_res['data'])} items. Parsing for nearest expiry...")
+                        
+                        api_futures = []
+                        api_options = []
+                        
+                        import re
+                        
+                        for item in search_res['data']:
+                            sym = item['tradingsymbol']
+                            # Filter junk
+                            if "NXT50" in sym or "BANK" in sym or "FIN" in sym or "MID" in sym:
+                                continue
+                                
+                            # Parse Future
+                            if sym.startswith("NIFTY") and sym.endswith("FUT"):
+                                # Extract date: NIFTY24FEB26FUT
+                                match = re.match(r'NIFTY(\d{2}[A-Z]{3}\d{2})FUT', sym)
+                                if match:
+                                    d_str = match.group(1)
+                                    try:
+                                        d_obj = datetime.strptime(d_str, "%d%b%y")
+                                        if d_obj >= today:
+                                            api_futures.append({
+                                                'date': d_obj,
+                                                'token': item['symboltoken'],
+                                                'symbol': sym,
+                                                'd_str': d_str
+                                            })
+                                    except: pass
+                                    
+                            # Parse CE/PE
+                            elif sym.startswith("NIFTY") and ("CE" in sym or "PE" in sym):
+                                # NIFTY26FEB2625000CE
+                                match = re.match(r'NIFTY(\d{2}[A-Z]{3}\d{2})(\d+)(CE|PE)', sym)
+                                if match:
+                                    d_str = match.group(1)
+                                    strk = int(match.group(2)) # Extract strike
+                                    typ = match.group(3)
+                                    try:
+                                        d_obj = datetime.strptime(d_str, "%d%b%y")
+                                        if d_obj >= today:
+                                            api_options.append({
+                                                'date': d_obj,
+                                                'strike': strk,
+                                                'type': typ,
+                                                'token': item['symboltoken'],
+                                                'symbol': sym,
+                                                'd_str': d_str
+                                            })
+                                    except: pass
+
+                        # Logic to pick tokens
+                        if api_futures:
+                            # Sort by date
+                            api_futures.sort(key=lambda x: x['date'])
+                            # Pick nearest monthly future (usually the first one returned for FUT)
+                            # Actually futures are monthly. The list will have Feb, Mar, Apr.
+                            # We want the nearest one.
+                            nearest_fut = api_futures[0]
+                            tokens['future'] = nearest_fut['token']
+                            tokens['future_symbol'] = nearest_fut['symbol']
+                            print(f"✅ Discovered Future: {nearest_fut['symbol']}")
+                            
+                        if api_options:
+                            # Sort options by date then strike
+                            # Find indices nearest date
+                            # We want Weekly expiry (nearest date)
+                            # Get all unique dates
+                            dates = sorted(list(set(o['date'] for o in api_options)))
+                            if dates:
+                                nearest_opt_date = dates[0]
+                                tokens['expiry_date'] = nearest_opt_date
+                                d_str_target = nearest_opt_date.strftime("%d%b%y").upper()
+                                print(f"✅ Discovered Expiry: {d_str_target}")
+                                
+                                # Now find ATM CE/PE for this date
+                                # We need specific ATM strike 
+                                target_ce = None
+                                target_pe = None
+                                
+                                # Exact match check
+                                for opt in api_options:
+                                    if opt['date'] == nearest_opt_date and opt['strike'] == atm_strike:
+                                        if opt['type'] == 'CE': target_ce = opt
+                                        if opt['type'] == 'PE': target_pe = opt
+                                
+                                if target_ce: 
+                                    tokens['ce'] = target_ce['token']
+                                    tokens['ce_symbol'] = target_ce['symbol']
+                                    print(f"✅ Discovered CE: {target_ce['symbol']}")
+                                    
+                                if target_pe:
+                                    tokens['pe'] = target_pe['token']
+                                    tokens['pe_symbol'] = target_pe['symbol']
+                                    print(f"✅ Discovered PE: {target_pe['symbol']}")
+                                    
+                    else:
+                        print("❌ Broad API Search returned no data.")
+                        
+                except Exception as e:
+                    print(f"❌ API Discovery Error: {e}")
+                
                 return tokens
             
-            # DYNAMIC EXPIRY DISCOVERY: Find nearest available expiry from actual data
-            # Step 1: Extract all NIFTY 50 options (exclude BANKNIFTY, FINNIFTY, MIDCPNIFTY)
+            # Fallthrough to Master File Search logic if Broad Search logic didn't return
+            # (Or if Broad Search failed and we caught exception)
             import re
             
             nifty50_options = []
@@ -835,6 +987,7 @@ def update_scalping_data():
     global current_ce_symbol, current_pe_symbol  # Full symbol names for UI
     global last_tick_timestamp, points_per_sec, current_latency_ms # V7: Health Checks
     global last_logged_signal # Prevent log spam
+    global active_scalping_tokens, current_expiry # CRITICAL FIX: Ensure scoping
     
     print("🚀 Scalping Module thread started")
     
@@ -855,15 +1008,29 @@ def update_scalping_data():
     print("   Waiting for spot price... DONE")
         
     # Fetch initial tokens
+    future_token = None
+    atm_ce_token = None
+    atm_pe_token = None
+    
     try:
         tokens = get_option_tokens(smart_api_global, last_price)
+        
+        if tokens:
+            future_token = tokens.get("future") or tokens.get("future_token")
+            atm_ce_token = tokens.get("ce") or tokens.get("ce_token")
+            atm_pe_token = tokens.get("pe") or tokens.get("pe_token")
+            
+            # DEBUG: Explicitly check tokens
+            if not future_token and not atm_ce_token:
+                 print(f"⚠️ DEBUG: Tokens are None! Futures: {future_token}, CE: {atm_ce_token}")
+        else:
+            scalping_status = "Token Discovery Failed"
+            print("⚠️ Initial token discovery failed, starting loop anyway...")
+            
     except Exception as e:
         print(f"Token fetch error: {e}")
         time.sleep(2)
         return update_scalping_data() # Retry setup
-    future_token = tokens.get('future')
-    atm_ce_token = tokens.get('ce')
-    atm_pe_token = tokens.get('pe')
     future_symbol = tokens.get('future_symbol', '')
     ce_symbol = tokens.get('ce_symbol', '')
     pe_symbol = tokens.get('pe_symbol', '')
@@ -1008,6 +1175,11 @@ def update_scalping_data():
                                 last_pe_price = result
                     except Exception as e:
                         print(f"⚠️ Parallel fetch error for {key}: {e}")
+            
+            # CRITICAL FIX: Ensure Global Variables are updated from Cache/Poll
+            if fut_ltp: last_future_price = fut_ltp
+            if ce_ltp: last_ce_price = ce_ltp
+            if pe_ltp: last_pe_price = pe_ltp
                             
             # FORWARD FILL: Ensure we always have values for calculation
             # If we didn't fetch it this tick, use the last known value
@@ -1327,27 +1499,34 @@ def authenticate():
 # =============================================================================
 # WEBSOCKET DATA HANDLER
 # =============================================================================
-# =============================================================================
-# WEBSOCKET DATA HANDLER
-# =============================================================================
-def on_data(ws, message: dict):
+def on_data(ws, message):
     global current_signal, signal_color, last_price, total_ticks, market_status
     global ticker_data, token_map
     
     try:
-        # Check standard heartbeat
-        if not isinstance(message, dict): return
-        
-        # SmartAPI V2 structure: "token", "last_traded_price", etc.
-        token = message.get("token")
-        ltp = message.get("last_traded_price")
-        
-        if ltp is not None:
-             price = ltp / 100.0
-             
-             with lock:
+        # Handle Mode 3 (List of dicts) vs Mode 1 (Single Dict)
+        ticks = [message] if isinstance(message, dict) else message
+        if not isinstance(ticks, list): return
+
+        current_time = datetime.now()
+
+        for tick in ticks:
+            if not isinstance(tick, dict): continue
+            
+            token = tick.get("token")
+            ltp = tick.get("last_traded_price")
+            
+            if ltp is None: continue
+            price = ltp / 100.0
+            
+            # DEBUG: Trace scalping tokens
+            if token in active_scalping_tokens:
+                 print(f"📥 DEBUG: Data received for SCALPING token: {token} | Price: {price}")
+
+            with lock:
                 # 1. Identify which ticker this is
                 key = token_map.get(token)
+                if not key: continue
                 
                 # 2. Update Context Specific Logic
                 if key == "nifty": # Primary Context
@@ -1368,26 +1547,48 @@ def on_data(ws, message: dict):
                     tick_history.append(tick_entry)
                     
                     rsi, ema = calculate_indicators()
-                    current_signal, signal_color = generate_signal(price, rsi, ema)
+                # 3. Update SCALPING Global Variables (Critical for UI)
+                # Map token back to internal keys (fut, ce, pe)
+                # This ensures the API endpoint serves live data from the socket
+                global last_future_price, last_ce_price, last_pe_price
+                global future_token, atm_ce_token, atm_pe_token # CRITICAL FIX: Explicit Scope
                 
+                # Use GLOBAL token IDs (populated by update_scalping_data thread)
+                # Enforce STRING comparison to avoid type mismatches
+                str_token = str(token)
+                
+                if str_token == str(future_token):
+                    last_future_price = price
+                    print(f"✅ DEBUG: Global FUTURE updated: {price}")
+                elif str_token == str(atm_ce_token):
+                    last_ce_price = price
+                    print(f"✅ DEBUG: Global CE updated: {price}")
+                elif str_token == str(atm_pe_token):
+                    last_pe_price = price
+                    print(f"✅ DEBUG: Global PE updated: {price}")
+                
+                # Update Ticker Data Store
+                ticker_data[str_token] = {
+                    "price": price,
+                    # ...
+                }
                 # 3. Update Ticker Data Store
-                if key:
-                     # Calculate change (approximate vs close or previous tick if no close)
-                     # For real close, we rely on API "close_price" if available, else 0
-                     close_price = message.get("close_price", 0) / 100.0
-                     
-                     change = 0.0
-                     p_change = 0.0
-                     
-                     if close_price > 0:
-                         change = price - close_price
-                         p_change = (change / close_price) * 100
-                     
-                     ticker_data[key] = {
-                         "price": price,
-                         "change": change,
-                         "p_change": p_change
-                     }
+                # Calculate change (approximate vs close or previous tick if no close)
+                # For real close, we rely on API "close_price" if available, else 0
+                close_price = tick.get("close_price", 0) / 100.0
+                
+                change = 0.0
+                p_change = 0.0
+                
+                if close_price > 0:
+                    change = price - close_price
+                    p_change = (change / close_price) * 100
+                
+                ticker_data[key] = {
+                    "price": price,
+                    "change": change,
+                    "p_change": p_change
+                }
 
     except Exception as e:
         # print(f"Processing Error: {e}")
@@ -1585,6 +1786,12 @@ async def websocket_endpoint(websocket: WebSocket):
                         "velocity": points_per_sec, 
                         "history": list(scalping_history)[-50:]
                     }
+
+                    # DEBUG PAYLOAD
+                    if last_future_price or last_ce_price:
+                         print(f"📤 WS SENDING: FUT={last_future_price}, CE={last_ce_price}, PE={last_pe_price}")
+                    else:
+                         print(f"⚠️ WS SENDING EMPTY: FUT={last_future_price}")
 
                 data = {
                     "market_status": market_status,

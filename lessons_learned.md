@@ -608,3 +608,10 @@ pip install -r requirements.txt
 - **Issue**: `Latency` metric stuck at `2000ms`.
 - **Cause**: Variable only updated inside `if to_fetch:` block. On cache hits (0 fetch), it became stale.
 - **Fix**: Update latency logic on **every tick**, regardless of source.
+
+## 🐞 JavaScript Hoisting & ReferenceErrors (Jan 30 2026)
+- **Problem**: Dashboard remained empty ("--") despite valid WebSocket data.
+- **Error**: `ReferenceError: Cannot access 'updateAndFlash' before initialization` in `app.js`.
+- **Cause**: The helper function `updateAndFlash` was defined using `const` (not hoisted) *after* it was called within `renderScalperUI`. This created a Temporal Dead Zone (TDZ).
+- **Fix**: Moved the function definition to the top of the parent function scope.
+- **Lesson**: Always define helper functions at the top of the scope or use `function` declarations (which are hoisted) if order independence is needed.
