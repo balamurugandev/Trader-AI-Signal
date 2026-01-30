@@ -594,14 +594,25 @@ function renderScalperUI() {
     }
 
     // Update prices
+    // Update prices (Dynamic Flash)
     if (futurePrice && data.future_price !== null) {
-        futurePrice.textContent = `₹${formatPrice(data.future_price)}`;
+        updateAndFlash(futurePrice, `₹${formatPrice(data.future_price)}`);
     }
     if (cePrice && data.ce_price !== null) {
-        cePrice.textContent = `₹${formatPrice(data.ce_price)}`;
+        updateAndFlash(cePrice, `₹${formatPrice(data.ce_price)}`);
     }
     if (pePrice && data.pe_price !== null) {
-        pePrice.textContent = `₹${formatPrice(data.pe_price)}`;
+        updateAndFlash(pePrice, `₹${formatPrice(data.pe_price)}`);
+    }
+
+    // Update Candle Count
+    if (candlesCountEl && data.candles_count !== undefined) {
+        candlesCountEl.textContent = `${data.candles_count}/200`;
+    }
+
+    // Update Ticker Tape (New)
+    if (data.tickers) {
+        updateTickerTape(data.tickers);
     }
 
     // Update Real Basis (Synthetic) with gauge and sentiment
@@ -870,6 +881,78 @@ function renderScalperUI() {
 // =============================================================================
 // DATE/TIME UPDATER
 // =============================================================================
+// ===================================
+// TICKER TAPE LOGIC
+// ===================================
+function updateTickerTape(tickers) {
+    const tapeContainer = document.querySelector('.ticker-tape');
+    if (!tapeContainer) return;
+
+    // Map keys to display names
+    const displayNames = {
+        'nifty': 'NIFTY 50',
+        'sensex': 'SENSEX',
+        'banknifty': 'BANKNIFTY',
+        'midcpnifty': 'MIDCPNIFTY',
+        'indiavix': 'INDIA VIX',
+        'niftysmallcap': 'SMALLCAP'
+    };
+
+    // Order matters
+    const order = ['nifty', 'sensex', 'banknifty', 'midcpnifty', 'indiavix'];
+
+    // If tape is empty (first run), enable it
+    if (tapeContainer.children.length === 0 || tapeContainer.querySelector('.ticker-item-static')) {
+        tapeContainer.innerHTML = ''; // Clear static/loading
+    }
+
+    // We can't clearinnerHTML every time (flashing). 
+    // We should update existing items or create if missing.
+    // Unique ID strategy: ticker-item-[key]
+
+    order.forEach(key => {
+        const itemData = tickers[key];
+        if (!itemData) return;
+
+        let itemEl = document.getElementById(`ticker-item-${key}`);
+
+        // Calculate color class
+        const changeClass = itemData.change >= 0 ? 'positive' : 'negative';
+        const sign = itemData.change >= 0 ? '+' : '';
+
+        if (!itemEl) {
+            // Create new
+            itemEl = document.createElement('div');
+            itemEl.id = `ticker-item-${key}`;
+            itemEl.className = 'ticker-item';
+
+            // Structure: Name | Price | Change (hidden on mobile?) 
+            // Based on HTML: Name | Price | Price (duplicate for animation?)
+            // Let's stick to Name | Price
+
+            itemEl.innerHTML = `
+                <span class="ticker-name">${displayNames[key] || key.toUpperCase()}</span>
+                <span class="ticker-value" id="val-${key}">--</span>
+                <!-- Optional: Change Percentage if needed in future -->
+            `;
+            tapeContainer.appendChild(itemEl);
+        }
+
+        // Update Value
+        const valEl = itemEl.querySelector('.ticker-value');
+        if (valEl) {
+            const newVal = formatPrice(itemData.price);
+            // Flash if changed
+            if (valEl.textContent !== newVal) {
+                valEl.textContent = newVal;
+                // Add color to price itself? Or just keep it white/styled?
+                // valEl.style.color = itemData.change >= 0 ? 'var(--accent-green)' : 'var(--accent-red)'; // Removed per user request
+                valEl.style.color = ''; // Reset to default CSS
+            }
+        }
+    });
+}
+
 function updateDateTime() {
     const now = new Date();
 
@@ -918,6 +1001,10 @@ document.addEventListener('DOMContentLoaded', () => {
     pePrice = document.getElementById('pe-price');
     basisValue = document.getElementById('basis-value');
     biasFill = document.getElementById('bias-fill');
+
+    // Fix: Initialize Candle Counter
+    candlesCountEl = document.getElementById('candle-count');
+
     straddleValue = document.getElementById('straddle-value');
     scalpingSignalBox = document.getElementById('scalping-signal-box');
     scalpSignalIcon = document.getElementById('scalp-signal-icon');
@@ -935,6 +1022,16 @@ document.addEventListener('DOMContentLoaded', () => {
     pcrValueSignal = document.getElementById('pcr-value-signal');
     pcrBadge = document.getElementById('pcr-badge');
     pcrValueEl = document.getElementById('pcr-value');
+    ceStrikeEl = document.getElementById('ce-strike');
+    peStrikeEl = document.getElementById('pe-strike');
+
+    // Initialize Ticker Tape Container
+    const tickerTape = document.querySelector('.ticker-tape');
+    if (tickerTape) {
+        // Clear static content on load to prevent duplicates if we re-render? 
+        // Or leave it for SEO/Loading state. 
+        // We will replace content in updateTickerTape.
+    }
 
     connectWebSocket();
     initStraddleChart();
