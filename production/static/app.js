@@ -723,7 +723,7 @@ function renderScalperUI() {
             scalpSignalIcon.textContent = '🔴';
             scalpSignalText.textContent = 'BUY PUT';
             scalpSignalDesc.textContent = `${sentiment} + ${trend} Straddle → PUT Entry`;
-        } else if (data.signal === 'TRAP') {
+        } else if (scalping.signal === 'TRAP') {
             scalpingSignalBox.classList.add('trap');
             scalpSignalIcon.textContent = '⚠️';
             scalpSignalText.textContent = 'TRAP';
@@ -745,19 +745,19 @@ function renderScalperUI() {
         // ===================================
         // Only log if signal changed AND it's a trade signal (BUY/SELL/TRAP)
         // OR if it changed from a trade signal back to WAIT (to show exit/reset)
-        if (data.signal !== window.lastSignalState) {
+        if (scalping.signal !== window.lastSignalState) {
             // Log valuable state changes
             const meaningfulSignals = ['BUY CALL', 'BUY PUT', 'TRAP'];
             const wasMeaningful = meaningfulSignals.includes(window.lastSignalState);
-            const isMeaningful = meaningfulSignals.includes(data.signal);
+            const isMeaningful = meaningfulSignals.includes(scalping.signal);
 
             // Log if it's a new Trade Signal OR a Trap
             if (isMeaningful) {
-                console.log("HISTORY UPDATE:", data.signal);
-                updateSignalHistory(data.signal, data);
+                console.log("HISTORY UPDATE:", scalping.signal);
+                updateSignalHistory(scalping.signal, scalping);
             }
 
-            window.lastSignalState = data.signal;
+            window.lastSignalState = scalping.signal;
         }
     }
 
@@ -780,14 +780,14 @@ function renderScalperUI() {
     }
 
     // Update Trade Suggestion
-    if (data.suggestion && tradeSuggestion) {
-        tradeSuggestion.textContent = data.suggestion;
+    if (scalping.suggestion && tradeSuggestion) {
+        tradeSuggestion.textContent = scalping.suggestion;
 
         // Dynamic coloring
         tradeSuggestion.style.color = 'var(--text-primary)'; // Default
-        if (data.suggestion.includes('BUY')) {
-            if (data.suggestion.includes('CE')) tradeSuggestion.style.color = 'var(--accent-green)';
-            if (data.suggestion.includes('PE')) tradeSuggestion.style.color = 'var(--accent-red)';
+        if (scalping.suggestion.includes('BUY')) {
+            if (scalping.suggestion.includes('CE')) tradeSuggestion.style.color = 'var(--accent-green)';
+            if (scalping.suggestion.includes('PE')) tradeSuggestion.style.color = 'var(--accent-red)';
         }
     }
 
@@ -796,14 +796,14 @@ function renderScalperUI() {
     // ===================================
 
     // 1. Latency Monitor
-    if (data.latency_ms !== undefined && latencyDot && latencyText) {
-        latencyText.textContent = `${data.latency_ms}ms`;
+    if (scalping.latency_ms !== undefined && latencyDot && latencyText) {
+        latencyText.textContent = `${scalping.latency_ms}ms`;
         latencyDot.className = 'latency-dot'; // Reset class
 
-        if (data.latency_ms < 500) {
+        if (scalping.latency_ms < 500) {
             latencyDot.classList.add('latency-good');
             latencyText.style.color = 'var(--accent-green)';
-        } else if (data.latency_ms < 1500) {
+        } else if (scalping.latency_ms < 1500) {
             latencyDot.classList.add('latency-warn');
             latencyText.style.color = 'var(--accent-yellow)';
         } else {
@@ -813,31 +813,30 @@ function renderScalperUI() {
     }
 
     // 2. Velocity Momentum Bar (Enhanced)
-    if (data.velocity !== undefined) {
+    if (scalping.velocity !== undefined) {
         // Update Bar Width
         if (momentumBar) {
             // Cap at 10 pts/sec for 100% width
-            const velocity = Math.abs(data.velocity);
+            const velocity = Math.abs(scalping.velocity);
             const width = Math.min((velocity / 10) * 100, 100);
             momentumBar.style.width = `${width}%`;
         }
 
         // Update Text Label
         if (velocityValue) {
-            const vel = Math.abs(data.velocity).toFixed(2);
+            const vel = Math.abs(scalping.velocity).toFixed(2);
             velocityValue.textContent = `${vel} pts/s`;
 
             // Dynamic Color for Text
-            velocityValue.style.color = (Math.abs(data.velocity) > 3.0) ? 'var(--accent-green)' : 'var(--accent-yellow)';
+            velocityValue.style.color = (Math.abs(scalping.velocity) > 3.0) ? 'var(--accent-green)' : 'var(--accent-yellow)';
         }
     }
 
     // 3. PCR Badge (Signal Box)
-    // 3. PCR Badge (Signal Box)
     if (pcrBadgeSignal && pcrValueSignal) {
         pcrBadgeSignal.style.display = 'block'; // Always show
 
-        let pcrVal = data.pcr;
+        let pcrVal = scalping.pcr;
         if (pcrVal === undefined || pcrVal === null) pcrVal = 1.0; // Default Neutral
 
         pcrValueSignal.textContent = pcrVal.toFixed(2);
@@ -852,11 +851,11 @@ function renderScalperUI() {
     }
 
     // Update PCR Badge (New)
-    if (data.pcr !== undefined && pcrBadgeSignal && pcrValueSignal) {
+    if (scalping.pcr !== undefined && pcrBadgeSignal && pcrValueSignal) {
         pcrBadgeSignal.style.display = 'block';
 
         // Show PCR value with staleness indicator
-        const pcrAge = data.pcr_age !== undefined ? data.pcr_age : -1;
+        const pcrAge = scalping.pcr_age !== undefined ? scalping.pcr_age : -1;
         let ageText = '';
         let ageColor = '';
 
@@ -873,12 +872,12 @@ function renderScalperUI() {
             }
         }
 
-        pcrValueSignal.innerHTML = `${data.pcr.toFixed(2)} <span style="font-size: 0.7em; color: ${ageColor};">${ageText}</span>`;
+        pcrValueSignal.innerHTML = `${scalping.pcr.toFixed(2)} <span style="font-size: 0.7em; color: ${ageColor};">${ageText}</span>`;
 
         pcrBadgeSignal.classList.remove('bullish', 'bearish');
-        if (data.pcr > 1.0) {
+        if (scalping.pcr > 1.0) {
             pcrBadgeSignal.classList.add('bullish');
-        } else if (data.pcr < 0.7) {
+        } else if (scalping.pcr < 0.7) {
             pcrBadgeSignal.classList.add('bearish');
         }
     }

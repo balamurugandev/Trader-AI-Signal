@@ -1780,8 +1780,8 @@ async def websocket_endpoint(websocket: WebSocket):
                         "atm_strike": current_atm_strike, # Added for UI Labels
                         "ce_symbol": current_ce_symbol,   # Added for UI Labels
                         "pe_symbol": current_pe_symbol,   # Added for UI Labels
-                        "signal": scalping_signal if 'scalping_signal' in locals() else "WAIT", # Use local var
-                        "suggestion": trade_suggestion if 'trade_suggestion' in locals() else "Initializing...",
+                        "signal": scalping_signal if 'scalping_signal' in globals() else "WAIT",
+                        "suggestion": trade_suggestion if 'trade_suggestion' in globals() else "Initializing...",
                         "latency_ms": int(current_latency_ms),
                         "velocity": points_per_sec, 
                         "history": list(scalping_history)[-50:]
