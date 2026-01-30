@@ -331,7 +331,7 @@ def update_scalping_subscriptions(future_tok, ce_tok, pe_tok):
             # CRITICAL: Update token_map so on_data processes these messages!
             # Map token_id -> token_id (Self-mapping for lookup)
             for t in new_tokens:
-                 token_map[t] = t
+                 token_map[str(t)] = str(t)
                  
             print(f"✅ Subscribed (Mode 3) successfully to {len(new_tokens)} options/futures")
         except Exception as e:
@@ -1175,18 +1175,23 @@ def update_scalping_data():
                     
                     if batch_data and batch_data.get('data') and batch_data['data'].get('fetched'):
                         fetched_list = batch_data['data']['fetched']
+                        print(f"📥 DEBUG: Batch Fetch returned {len(fetched_list)} tokens")
+                        
                         # Map results back to local variables
                         for item in fetched_list:
-                            token_res = item.get('token')
+                            token_res = str(item.get('symbolToken', ''))
                             ltp_res = item.get('ltp')
                             if ltp_res is None: continue
                             
-                            if str(token_res) == str(future_token):
-                                fut_ltp = ltp_res
-                            elif str(token_res) == str(atm_ce_token):
-                                ce_ltp = ltp_res
-                            elif str(token_res) == str(atm_pe_token):
-                                pe_ltp = ltp_res
+                            if token_res == str(future_token):
+                                fut_ltp = float(ltp_res)
+                                print(f"✅ DEBUG: Polled Future Price: {fut_ltp}")
+                            elif token_res == str(atm_ce_token):
+                                ce_ltp = float(ltp_res)
+                                print(f"✅ DEBUG: Polled CE Price: {ce_ltp}")
+                            elif token_res == str(atm_pe_token):
+                                pe_ltp = float(ltp_res)
+                                print(f"✅ DEBUG: Polled PE Price: {pe_ltp}")
                                 
                     elif batch_data and "Access denied" in str(batch_data.get('message', '')):
                         print("🚫 API RATE LIMIT REACHED! Triggering 10s cooldown...")
@@ -1564,7 +1569,8 @@ def on_data(ws, message):
 
             with lock:
                 # 1. Identify which ticker this is
-                key = token_map.get(token)
+                # Use STRING lookup for consistency across API/WebSocket types
+                key = token_map.get(str(token))
                 if not key: continue
                 
                 # 2. Update Context Specific Logic
