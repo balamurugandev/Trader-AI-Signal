@@ -657,7 +657,7 @@ function renderScalperUI() {
 
     // Update Straddle Value with SMA indicator
     if (straddleValue && scalping.straddle_price !== undefined) {
-        updateAndFlash(straddleValue, `₹${formatPrice(scalping.straddle_price)}`);
+        updateAndFlash(straddleValue, `₹${formatPrice(scalping.straddle_price)}`, 'var(--accent-yellow)');
     }
 
     // ================================================================
