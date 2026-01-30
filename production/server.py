@@ -131,6 +131,7 @@ market_status = "CONNECTING..."
 total_ticks = 0
 sws = None
 lock = threading.Lock()
+last_rate_limit_error = 0.0  # Phase 59: API Throttling state
 smart_api_global = None  # Global SmartConnect instance for scalping module
 
 # WebSocket clients
@@ -881,7 +882,8 @@ def fetch_ltp(smart_api, exchange: str, trading_symbol: str, token: str) -> Opti
     if token is None:
         return None
     try:
-        # time.sleep(0.2)  # Removed for parallel optimization
+        # Phase 59: Re-enable small delay to prevent account-level throttling
+        time.sleep(0.1) 
         data = smart_api.ltpData(exchange, trading_symbol, token)
         if data and data.get('data') and data['data'].get('ltp'):
             return float(data['data']['ltp'])
@@ -984,10 +986,16 @@ def update_scalping_data():
     global current_atm_strike, real_basis, sentiment, straddle_trend, straddle_sma3, trade_suggestion
     global is_trap, raw_basis_history, pcr_value, smart_api_global, market_status
     global momentum_buffer, last_price_for_velocity # V6 Fix: Added missing globals
-    global current_ce_symbol, current_pe_symbol  # Full symbol names for UI
-    global last_tick_timestamp, points_per_sec, current_latency_ms # V7: Health Checks
+    global current_ce_symbol, current_pe_symbol # Full symbol names for UI
+    global points_per_sec # V7: Health Checks
     global last_logged_signal # Prevent log spam
     global active_scalping_tokens, current_expiry # CRITICAL FIX: Ensure scoping
+    global last_rate_limit_error # Phase 59: For cooldown logic
+    
+    # HEALTH & PERFORMANCE TRACKING
+    last_pcr_update = None
+    last_tick_timestamp = time.time()
+    current_latency_ms = 0
     
     print("🚀 Scalping Module thread started")
     
@@ -1080,11 +1088,10 @@ def update_scalping_data():
                  should_switch = True
             elif new_atm != current_atm_strike:
                 # Hysteresis Check:
-                # Reduced buffer to match broker standards (more responsive).
-                # Midpoint is 25 pts. Buffer is 5 pts. Switch at >= 30 pts diff.
-                dist = abs(spot - current_atm_strike)
-                if dist >= 30:
-                    should_switch = True
+                if spot is not None and current_atm_strike is not None:
+                    dist = abs(spot - current_atm_strike)
+                    if dist >= 30:
+                        should_switch = True
             
             # DATE ROLLOVER CHECK (Fix for Overnight Server Run)
             # If date changed since last token fetch, force refresh to pick next expiry
@@ -1152,29 +1159,45 @@ def update_scalping_data():
             if not pe_ltp and atm_pe_token: to_fetch.append(('pe', pe_symbol, atm_pe_token))
 
             if to_fetch:
-                # OPTIMIZATION: Parallel Fetch (Global Standard)
-                # Fetch all missing tokens in parallel using persistent executor
-                futures_map = {
-                    item[0]: executor.submit(fetch_ltp, smart_api_global, "NFO", item[1], item[2]) 
-                    for item in to_fetch
-                }
-                
-                # Wait for all to complete (or timeout handled by fetch_ltp)
-                for key, future in futures_map.items():
-                    try:
-                        result = future.result()
-                        if result:
-                            if key == 'fut':
-                                fut_ltp = result
-                                last_future_price = result
-                            elif key == 'ce':
-                                ce_ltp = result
-                                last_ce_price = result
-                            elif key == 'pe':
-                                pe_ltp = result
-                                last_pe_price = result
-                    except Exception as e:
-                        print(f"⚠️ Parallel fetch error for {key}: {e}")
+                # Phase 59: Rate Limit Backoff Logic
+                cooldown_remaining = 10 - (time.time() - last_rate_limit_error)
+                if cooldown_remaining > 0:
+                    scalping_status = f"Rate Limited ({int(cooldown_remaining)}s)"
+                    time.sleep(1)
+                    continue
+
+                # Phase 59 Optimization: Batch Market Data Fetch (1 API call instead of 3)
+                try:
+                    # Construct payload - Angel One getMarketData needs { "EXCHANGE": [TOKENS] }
+                    tokens_by_exch = {"NFO": [item[2] for item in to_fetch]}
+                    
+                    batch_data = smart_api_global.getMarketData("FULL", tokens_by_exch)
+                    
+                    if batch_data and batch_data.get('data') and batch_data['data'].get('fetched'):
+                        fetched_list = batch_data['data']['fetched']
+                        # Map results back to local variables
+                        for item in fetched_list:
+                            token_res = item.get('token')
+                            ltp_res = item.get('ltp')
+                            if ltp_res is None: continue
+                            
+                            if str(token_res) == str(future_token):
+                                fut_ltp = ltp_res
+                            elif str(token_res) == str(atm_ce_token):
+                                ce_ltp = ltp_res
+                            elif str(token_res) == str(atm_pe_token):
+                                pe_ltp = ltp_res
+                                
+                    elif batch_data and "Access denied" in str(batch_data.get('message', '')):
+                        print("🚫 API RATE LIMIT REACHED! Triggering 10s cooldown...")
+                        last_rate_limit_error = time.time()
+                except Exception as e:
+                    error_msg = str(e)
+                    if "Access denied" in error_msg or "rate limit" in error_msg.lower():
+                        print("🚫 API RATE LIMIT REACHED! Triggering 10s cooldown...")
+                        last_rate_limit_error = time.time()
+                    else:
+                        print(f"⚠️ Batch fetch error: {e}")
             
             # CRITICAL FIX: Ensure Global Variables are updated from Cache/Poll
             if fut_ltp: last_future_price = fut_ltp
@@ -1213,15 +1236,20 @@ def update_scalping_data():
 
             # ============================================================
             # V6 VELOCITY ENGINE (Momentum Calculation)
-            # ============================================================
+            # ============================================================            # 3. CALCULATE VELOCITY (V6)
             current_velocity = 0.0
-            if spot and last_price_for_velocity > 0:
-                 change = spot - last_price_for_velocity
-                 momentum_buffer.append(change)
-                 if len(momentum_buffer) > 0:
-                     current_velocity = sum(momentum_buffer) / len(momentum_buffer)
-            
-            last_price_for_velocity = spot if spot else 0.0 # Update for next tick
+            if spot is not None and last_price_for_velocity is not None and last_price_for_velocity > 0:
+                # Calculate movement
+                movement = spot - last_price_for_velocity
+                
+                # Update buffer
+                momentum_buffer.append(movement)
+                
+                # Points per second = Sum of last 5 movement blocks
+                if len(momentum_buffer) > 0:
+                    points_per_sec = sum(momentum_buffer)
+                    current_velocity = points_per_sec
+            last_price_for_velocity = spot if spot is not None else 0.0 # Update for next tick
 
             
             with scalping_lock:
@@ -1242,7 +1270,7 @@ def update_scalping_data():
                 # Real Basis = Synthetic Future - Spot Price
                 # This is more accurate than simple Future - Spot
                 
-                if ce_ltp and pe_ltp and spot:
+                if ce_ltp is not None and pe_ltp is not None and spot is not None:
                     synthetic_future = current_atm_strike + ce_ltp - pe_ltp
                     raw_basis = synthetic_future - spot
                     real_basis = round(raw_basis, 2)
@@ -1258,9 +1286,9 @@ def update_scalping_data():
                         sentiment_score = 0
                     
                     # Enhanced Sentiment Logic (Relative)
-                    if sentiment_score > 3:
+                    if sentiment_score is not None and sentiment_score > 3:
                         sentiment = "BULLISH"
-                    elif sentiment_score < -3:
+                    elif sentiment_score is not None and sentiment_score < -3:
                         sentiment = "BEARISH"
                     else:
                         sentiment = "NEUTRAL"
@@ -1270,7 +1298,7 @@ def update_scalping_data():
                     sentiment_score = 0
                 
                 # Legacy basis calculation (Future - Spot) for backward compat
-                if fut_ltp and spot:
+                if fut_ltp is not None and spot is not None:
                     last_basis = round(fut_ltp - spot, 2)
                 else:
                     last_basis = None
@@ -1284,7 +1312,7 @@ def update_scalping_data():
                 straddle_sma3 = None
                 straddle_trend = "FLAT"
 
-                if ce_ltp and pe_ltp:
+                if ce_ltp is not None and pe_ltp is not None:
                     straddle_price = round((ce_ltp + pe_ltp) / 2, 2)  # Averaging Price (intentional)
                     last_straddle_price = straddle_price
                 elif last_straddle_price is not None:
@@ -1294,7 +1322,18 @@ def update_scalping_data():
                 if straddle_price is not None:
                     last_straddle_prices.append(straddle_price) # Append to deque for SMA calculation
                     if len(last_straddle_prices) >= 3:
-                        straddle_sma3 = round(sum(list(last_straddle_prices)[-3:]) / 3, 2)
+                        straddle_trend = "RISING" if straddle_price > last_straddle_price else "FALLING"
+                
+                # Calculate EMA/SMA for Straddle (V5 Optimization)
+                # Ensure we have at least 3 points for SMA
+                if len(last_straddle_prices) >= 3:
+                     avg = sum(last_straddle_prices) / 3
+                     straddle_sma3 = avg
+                
+                # Signals (V6 logic)
+                if straddle_price is not None and straddle_sma3 is not None and straddle_price > straddle_sma3:
+                    # Straddle rising = Decay or Trend starting
+                    pass
                 
                 # Determine Trend
                 if straddle_sma3 is not None and straddle_price is not None:
@@ -1321,9 +1360,9 @@ def update_scalping_data():
                 # Max physics drift was 0.8, so threshold 0.4 is robust.
                 
                 # BUY CALL LOGIC
-                if current_velocity > 0.4:
-                     if pcr_value >= 1.0: # Confirmed Bullish Data
-                          if real_basis > -50: # Avoid deep discounts (extreme fear)
+                if current_velocity is not None and current_velocity > 0.4:
+                     if pcr_value is not None and pcr_value >= 1.0: # Confirmed Bullish Data
+                          if real_basis is not None and real_basis > -50: # Avoid deep discounts (extreme fear)
                                scalping_signal = "BUY CALL"
                                trade_suggestion = f"🚀 MOMENTUM UP ({current_velocity:.2f}) - BUY CE"
                           else:
@@ -1335,8 +1374,8 @@ def update_scalping_data():
                      # Logic: Block Bullish trades if PCR is low (Bearish OI).
                      # EXCEPTION: If Sentiment > 5.0 (Panic Buying) AND Velocity > 0.4 (Real Momentum), 
                      # we assume a Short Squeeze and OVERRIDE the trap.
-                     elif pcr_value < 0.6:
-                          is_short_squeeze = (sentiment_score > 5.0) and (current_velocity > 0.4)
+                     elif pcr_value is not None and pcr_value < 0.6:
+                          is_short_squeeze = (sentiment_score is not None and sentiment_score > 5.0) and (current_velocity is not None and current_velocity > 0.4)
                           
                           if is_short_squeeze:
                                # OVERRIDE: Squeeze detected. Ignore PCR.
@@ -1357,8 +1396,8 @@ def update_scalping_data():
                           
                           
                 # BUY PUT LOGIC
-                elif current_velocity < -0.4:
-                     if pcr_value <= 1.0: # Confirmed Bearish Data
+                elif current_velocity is not None and current_velocity < -0.4:
+                     if pcr_value is not None and pcr_value <= 1.0: # Confirmed Bearish Data
                           scalping_signal = "BUY PUT"
                           trade_suggestion = f"🩸 MOMENTUM DOWN ({current_velocity:.2f}) - BUY PE"
                      else:
@@ -1369,7 +1408,7 @@ def update_scalping_data():
                 
                 # SIDEWAYS
                 # SIDEWAYS
-                elif abs(current_velocity) < 0.2:
+                elif current_velocity is not None and abs(current_velocity) < 0.2:
                      trade_suggestion = "⚪ SIDEWAYS - Scalping Zone"
                      
                 # --- FINAL CHECK: 3:00 PM TREND LOCK (Active ONLY after 14:55) ---
@@ -1700,7 +1739,7 @@ async def get_scalper_data():
             "signal": scalping_signal,
             "suggestion": trade_suggestion,
             "pcr": pcr_value,  # New PCR Value
-            "pcr_age": int(time.time() - last_pcr_update) if last_pcr_update > 0 else -1,  # Staleness in seconds
+            "pcr_age": int(time.time() - last_pcr_update) if last_pcr_update is not None and last_pcr_update > 0 else -1,  # Staleness in seconds
             "atm_strike": current_atm_strike,  # Current ATM Strike
             "ce_symbol": current_ce_symbol,  # Full CE Symbol Name
             "pe_symbol": current_pe_symbol,  # Full PE Symbol Name
