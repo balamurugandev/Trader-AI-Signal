@@ -10,6 +10,7 @@ if hasattr(ssl, '_create_unverified_context'):
 # Global variable to store the latest news string
 # Accessed by server.py to include in WebSocket broadcast
 latest_news_str = "⌛ Initializing News Feed..."
+latest_news_timestamp = 0  # Epoch timestamp of last successful fetch
 
 # Configuration
 RSS_URL = "https://news.google.com/rss/search?q=(Nifty+OR+Sensex+OR+Bank+Nifty)+AND+(RBI+OR+GDP+OR+Budget+OR+Quarterly+Results+OR+Q3+Results+OR+Earnings)&hl=en-IN&gl=IN&ceid=IN:en"
@@ -68,9 +69,10 @@ def fetch_news():
                 if headlines:
                     new_news_str = "  ✦  ".join(headlines)
                     
-                    # Atomic replacement (Thread-safe enough for string assignment)
+                    global latest_news_timestamp
                     latest_news_str = new_news_str
-                    print(f"✅ [NewsEngine] Updated {len(headlines)} headlines.")
+                    latest_news_timestamp = time.time()
+                    print(f"✅ [NewsEngine] Updated {len(headlines)} headlines at {time.ctime(latest_news_timestamp)}.")
                 else:
                     print("⚠️ [NewsEngine] Parsed feed but found no valid headlines.")
 

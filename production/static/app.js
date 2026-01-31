@@ -138,28 +138,23 @@ function updateDashboard(data) {
         updateScalperUI(data);
     }
 
-    // Update News Ticker
     // Update News Ticker (List View)
     if (data.news && newsTicker) {
-        // Only update if content changed significantly
+        // Render News Items
         if (newsTicker.getAttribute('data-last-news') !== data.news) {
             newsTicker.setAttribute('data-last-news', data.news);
 
-            // Split string by separator '✦' and filter empty strings
             const headlines = data.news.split('✦').map(h => h.trim()).filter(h => h.length > 0);
 
-            // Render as List
             if (headlines.length > 0) {
-                // Clear existing
                 newsTicker.innerHTML = '';
                 const ul = document.createElement('div');
-                ul.className = 'news-grid'; // Use grid/flex for layout
+                ul.className = 'news-grid';
 
                 headlines.forEach(head => {
                     const item = document.createElement('div');
                     item.className = 'news-item';
 
-                    // Parse "Headline###Source"
                     let title = head;
                     let source = "";
                     if (head.includes('###')) {
@@ -167,39 +162,41 @@ function updateDashboard(data) {
                         title = parts[0];
                         source = parts[1];
                     } else if (head.includes('|')) {
-                        // Fallback for any cached old data
                         const parts = head.split('|');
                         title = parts[0];
                         source = parts[1] || "";
                     }
 
-                    // Clean symbols
                     const cleanHead = title.replace(/[►▼▲]/g, '').trim();
-
-                    // Render with Source Badge
-                    item.innerHTML = `
-                        <span class="news-bullet">➤</span> 
-                        <span class="news-text">${cleanHead}</span>
-                        ${source ? `<span class="news-source">(${source})</span>` : ''}
-                    `;
+                    item.innerHTML = `<span class="news-bullet">➤</span> <span class="news-text">${cleanHead}</span>${source ? `<span class="news-source">(${source})</span>` : ''}`;
                     ul.appendChild(item);
                 });
                 newsTicker.appendChild(ul);
 
-                // ⚡ Flash effect for dynamic update
+                // Flash effect
                 const container = document.querySelector('.news-container');
                 if (container) {
                     container.style.transition = 'border-color 0.3s';
-                    const originalBorder = container.style.borderColor;
-                    container.style.borderColor = 'var(--text-primary)'; // Flash white border
-                    setTimeout(() => {
-                        container.style.borderColor = ''; // Revert to CSS default
-                    }, 500);
+                    container.style.borderColor = 'var(--text-primary)';
+                    setTimeout(() => container.style.borderColor = '', 500);
                 }
-
             } else {
                 newsTicker.innerHTML = '<div class="news-fetching">Waiting for updates...</div>';
             }
+        }
+    }
+
+    // Update News Timer (Performance optimized, only text change)
+    const newsTimer = document.getElementById('news-timer');
+    if (newsTimer && data.news_age !== undefined) {
+        const age = data.news_age;
+        if (age < 0) {
+            newsTimer.textContent = '(Updating...)';
+        } else if (age < 60) {
+            newsTimer.textContent = `(Updated ${age}s ago)`;
+        } else {
+            const mins = Math.floor(age / 60);
+            newsTimer.textContent = `(Updated ${mins}m ago)`;
         }
     }
 

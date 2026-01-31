@@ -987,9 +987,10 @@ def update_scalping_data():
     global active_scalping_tokens, current_expiry # CRITICAL FIX: Ensure scoping
     global last_rate_limit_error # Phase 59: For cooldown logic
     global current_latency_ms, last_tick_timestamp # Fix: Use globals
+    global last_pcr_update # Fix: Use global timestamp from PCR thread
 
     # HEALTH & PERFORMANCE TRACKING
-    last_pcr_update = None
+    # last_pcr_update = None # REMOVED: Caused variable shadowing, hiding live updates
     
     print("🚀 Scalping Module thread started")
     
@@ -1047,7 +1048,7 @@ def update_scalping_data():
     
     print(f"📈 Scalping ready: ATM={current_atm_strike}, Expiry={current_expiry}")
     
-    last_straddle_prices = deque(maxlen=5)  # For trend detection
+    last_straddle_prices = deque(maxlen=3)  # For trend detection
     raw_basis_history = deque(maxlen=20) # For Z-Score calculation
     last_straddle_price = None # CRITICAL FIX: Initialize for forward fill
     atm_shift_count = 0
@@ -1767,6 +1768,8 @@ async def get_scalper_data():
             "ce_symbol": current_ce_symbol,  # Full CE Symbol Name
             "pe_symbol": current_pe_symbol,  # Full PE Symbol Name
             "latency_ms": int(current_latency_ms), # RTT Latency (Smoothed)
+            "news": news_engine.latest_news_str, # Dynamic News from Engine
+            "news_age": int(time.time() - news_engine.latest_news_timestamp) if news_engine.latest_news_timestamp > 0 else -1,
             "velocity": points_per_sec, # Velocity in points/sec
             "history": list(scalping_history)[-50:]
         }
@@ -1880,7 +1883,8 @@ async def websocket_endpoint(websocket: WebSocket):
                         for k in ["nifty", "sensex", "banknifty", "midcpnifty", "niftysmallcap", "indiavix"]
                     },
                     # vvv NEWS ENGINE INTEGRATION vvv
-                    "news": news_engine.latest_news_str
+                    "news": news_engine.latest_news_str,
+                    "news_age": int(time.time() - news_engine.latest_news_timestamp) if news_engine.latest_news_timestamp > 0 else -1
                     # ^^^ NEWS ENGINE INTEGRATION ^^^
                 }
             # OPTIMIZATION: Use orjson for faster serialization
