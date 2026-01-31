@@ -1787,15 +1787,20 @@ async def get_trade_logs(limit: int = 100, date: Optional[str] = None):
         def fetch_query():
             query = trade_logger.supabase.table('trade_logs') \
                 .select("*") \
-                .order('timestamp', desc=True) \
-                .limit(limit)
+                .order('timestamp', desc=True)
             
             if date:
                 # Filter by specific date (whole day)
-                # Assumes timestamp column is compatible with ISO strings
+                # CRITICAL FIX: Increase limit for full-day queries to capture morning session
+                # 200 logs (frontend default) only covers ~10 mins at high frequency
+                day_limit = max(limit, 5000) 
+                
                 start_ts = f"{date}T00:00:00"
                 end_ts = f"{date}T23:59:59"
-                query = query.gte('timestamp', start_ts).lte('timestamp', end_ts)
+                query = query.gte('timestamp', start_ts).lte('timestamp', end_ts).limit(day_limit)
+            else:
+                # Recent logs only
+                query = query.limit(limit)
             
             return query.execute()
 
