@@ -1612,13 +1612,13 @@ def on_data(ws, message):
                 
                 if str_token == str(future_token):
                     last_future_price = price
-                    print(f"✅ DEBUG: Global FUTURE updated: {price}")
+                    # print(f"✅ DEBUG: Global FUTURE updated: {price}")
                 elif str_token == str(atm_ce_token):
                     last_ce_price = price
-                    print(f"✅ DEBUG: Global CE updated: {price}")
+                    # print(f"✅ DEBUG: Global CE updated: {price}")
                 elif str_token == str(atm_pe_token):
                     last_pe_price = price
-                    print(f"✅ DEBUG: Global PE updated: {price}")
+                    # print(f"✅ DEBUG: Global PE updated: {price}")
                 
                 # Update Ticker Data Store
                 ticker_data[str_token] = {
@@ -1860,10 +1860,11 @@ async def websocket_endpoint(websocket: WebSocket):
                     }
 
                     # DEBUG PAYLOAD
-                    if last_future_price or last_ce_price:
-                         print(f"📤 WS SENDING: FUT={last_future_price}, CE={last_ce_price}, PE={last_pe_price}")
-                    else:
-                         print(f"⚠️ WS SENDING EMPTY: FUT={last_future_price}")
+                    # DEBUG PAYLOAD (High Frequency - Disabled for Prod)
+                    # if last_future_price or last_ce_price:
+                    #      print(f"📤 WS SENDING: FUT={last_future_price}, CE={last_ce_price}, PE={last_pe_price}")
+                    # else:
+                    #      print(f"⚠️ WS SENDING EMPTY: FUT={last_future_price}")
 
                 data = {
                     "market_status": market_status,
@@ -1893,7 +1894,7 @@ async def websocket_endpoint(websocket: WebSocket):
             # await websocket.send_json(data)
             # FIX: Decode bytes to utf-8 string to send as TEXT frame (Frontend compatibility)
             await websocket.send_text(orjson.dumps(data).decode('utf-8'))
-            await asyncio.sleep(0.05)  # 50ms update (20Hz) - GLOBAL STANDARD
+            await asyncio.sleep(0.01)  # 10ms update (100Hz) - ULTRA LOW LATENCY
     except WebSocketDisconnect:
         connected_clients.discard(websocket)
     except Exception:
