@@ -137,10 +137,19 @@ Combines Sentiment + Trend + **OI Data** to generate signals:
     - **Rule:** Blocks signals if trend is **Opposite** OR **Sideways**.
 - **Result:** Prevents "3 PM Bleed" caused by whipsaw trades.
 
-### 6. Performance Optimization (Turbo Mode) ⚡
+### 6. News Analysis with Smart Timer 📰
+- **Live Feed:** Aggregates top market news in a scrolling ticker.
+- **Smart Timer:** Displays **Relative Time** (e.g., `(Updated 12s ago)`) with second-level precision.
+- **Logic:** Tracks the exact timestamp of the last successful fetch to prevent showing stale news as "fresh".
+
+### 7. Performance Optimization (Turbo Mode) ⚡
 - **orjson Serialization:** Replaces standard JSON with Rust-based `orjson` for sub-millisecond payload generation.
 - **Persistent ThreadPool:** Reduces CPU overhead by reusing threads for API polling.
 - **Result:** Latency stabilized around 100-200ms even during high traffic.
+
+### 8. Reliability & Fixes (Jan 2026) 🛠️
+- **PCR Logic Fixed:** Solved a variable shadowing bug where PCR age was reading empty local data instead of the live thread. Now reports true age (e.g., `(12s)`).
+- **Chart Color Logic:** Fixed math error in `deque` usage (Sum/3 vs Sum/5). Chart now correctly shows Orange/Neutral for flat markets instead of False Red.
 
 ---
 
