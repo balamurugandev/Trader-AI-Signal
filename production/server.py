@@ -986,11 +986,10 @@ def update_scalping_data():
     global last_logged_signal # Prevent log spam
     global active_scalping_tokens, current_expiry # CRITICAL FIX: Ensure scoping
     global last_rate_limit_error # Phase 59: For cooldown logic
-    
+    global current_latency_ms, last_tick_timestamp # Fix: Use globals
+
     # HEALTH & PERFORMANCE TRACKING
     last_pcr_update = None
-    last_tick_timestamp = time.time()
-    current_latency_ms = 0
     
     print("🚀 Scalping Module thread started")
     
@@ -1218,11 +1217,20 @@ def update_scalping_data():
             rtt_ms = (fetch_end_time - fetch_start_time) * 1000
             
             # Smooth the latency (EMA)
+            # Fix 0ms Latency Bug: If RTT is 0 (Cache Hit), use "Data Age" or minimum 1ms
+            if rtt_ms < 1:
+                # If cached, latency is effectively the age of the last tick
+                if 'last_tick_timestamp' in globals() and last_tick_timestamp > 0:
+                    data_age_ms = (time.time() - last_tick_timestamp) * 1000
+                    rtt_ms = max(1.0, data_age_ms)  # Use age, but at least 1ms
+                else:
+                    rtt_ms = 1.0 # Default minimum for cache hit
+
             if 'current_latency_ms' not in globals() or current_latency_ms == 0:
                  current_latency_ms = rtt_ms
             else:
                  current_latency_ms = (current_latency_ms * 0.7) + (rtt_ms * 0.3)
-                 
+            
             poll_count += 1
             if poll_count % 10 == 1:  # Log every 10th poll
                 # Format symbols for log: Strip "NIFTY" to keep it concise but readable
@@ -1548,6 +1556,8 @@ def on_data(ws, message):
         if not isinstance(ticks, list): return
 
         current_time = datetime.now()
+        global last_tick_timestamp
+        last_tick_timestamp = time.time() # Update for latency tracking
 
         for tick in ticks:
             if not isinstance(tick, dict): continue
