@@ -968,7 +968,11 @@ def fetch_oi_data(smart_api):
             time.sleep(10) # Poll every 10s
             
         except Exception as e:
-            print(f"⚠️ OI Fetch error: {e}")
+            err_str = str(e)
+            if "Timeout" in err_str or "timed out" in err_str:
+                 print(f"⚠️ OI Network Timeout. Retrying in 10s...")
+            else:
+                 print(f"⚠️ OI Fetch error: {err_str}")
             time.sleep(10)
 
 def update_scalping_data():
@@ -1139,19 +1143,18 @@ def update_scalping_data():
             
             # HYBRID DATA FETCHING (V10 Optimization)
             # 1. Check WebSocket Cache (0ms Latency) - if available
-            # 2. Parallel Polling (~200ms Latency) - Fetch ALL missing tokens concurrently
-            
             fetch_start_time = time.time() # Measure RTT
             
-            fut_ltp = ticker_data.get(future_token, {}).get('price') if future_token else None
-            ce_ltp = ticker_data.get(atm_ce_token, {}).get('price') if atm_ce_token else None
-            pe_ltp = ticker_data.get(atm_pe_token, {}).get('price') if atm_pe_token else None
+            # CRITICAL FIX: Cast keys to string to match on_data storage format
+            fut_ltp = ticker_data.get(str(future_token), {}).get('price') if future_token else None
+            ce_ltp = ticker_data.get(str(atm_ce_token), {}).get('price') if atm_ce_token else None
+            pe_ltp = ticker_data.get(str(atm_pe_token), {}).get('price') if atm_pe_token else None
             
             # Identify which tokens need fetching (not in WS cache)
             to_fetch = []
-            if not fut_ltp and future_token: to_fetch.append(('fut', future_symbol, future_token))
-            if not ce_ltp and atm_ce_token: to_fetch.append(('ce', ce_symbol, atm_ce_token))
-            if not pe_ltp and atm_pe_token: to_fetch.append(('pe', pe_symbol, atm_pe_token))
+            if not fut_ltp and future_token: to_fetch.append(('fut', future_symbol, str(future_token)))
+            if not ce_ltp and atm_ce_token: to_fetch.append(('ce', ce_symbol, str(atm_ce_token)))
+            if not pe_ltp and atm_pe_token: to_fetch.append(('pe', pe_symbol, str(atm_pe_token)))
 
             if to_fetch:
                 # Phase 59: Rate Limit Backoff Logic
@@ -1170,23 +1173,26 @@ def update_scalping_data():
                     
                     if batch_data and batch_data.get('data') and batch_data['data'].get('fetched'):
                         fetched_list = batch_data['data']['fetched']
-                        print(f"📥 DEBUG: Batch Fetch returned {len(fetched_list)} tokens")
+                        if poll_count % 10 == 0:
+                             print(f"📥 DEBUG: Batch Fetch returned {len(fetched_list)} tokens")
                         
-                        # Map results back to local variables
+                        # Map results back to local variables AND Update Cache
                         for item in fetched_list:
                             token_res = str(item.get('symbolToken', ''))
                             ltp_res = item.get('ltp')
                             if ltp_res is None: continue
                             
+                            val = float(ltp_res)
+                            
+                            # CRITICAL: POPULATE CACHE TO PREVENT RE-POLLING
+                            ticker_data[token_res] = { "price": val }
+
                             if token_res == str(future_token):
-                                fut_ltp = float(ltp_res)
-                                print(f"✅ DEBUG: Polled Future Price: {fut_ltp}")
+                                fut_ltp = val
                             elif token_res == str(atm_ce_token):
-                                ce_ltp = float(ltp_res)
-                                print(f"✅ DEBUG: Polled CE Price: {ce_ltp}")
+                                ce_ltp = val
                             elif token_res == str(atm_pe_token):
-                                pe_ltp = float(ltp_res)
-                                print(f"✅ DEBUG: Polled PE Price: {pe_ltp}")
+                                pe_ltp = val
                                 
                     elif batch_data and "Access denied" in str(batch_data.get('message', '')):
                         print("🚫 API RATE LIMIT REACHED! Triggering 10s cooldown...")
@@ -1218,14 +1224,10 @@ def update_scalping_data():
             rtt_ms = (fetch_end_time - fetch_start_time) * 1000
             
             # Smooth the latency (EMA)
-            # Fix 0ms Latency Bug: If RTT is 0 (Cache Hit), use "Data Age" or minimum 1ms
+            # Fix: If Cache Hit (RTT < 1), report 1ms (System Speed) instead of Data Age (Market Speed)
+            # This prevents "Lat=1000ms" confusion when market is slow/closed.
             if rtt_ms < 1:
-                # If cached, latency is effectively the age of the last tick
-                if 'last_tick_timestamp' in globals() and last_tick_timestamp > 0:
-                    data_age_ms = (time.time() - last_tick_timestamp) * 1000
-                    rtt_ms = max(1.0, data_age_ms)  # Use age, but at least 1ms
-                else:
-                    rtt_ms = 1.0 # Default minimum for cache hit
+                rtt_ms = 1.0 # Cache access is instant
 
             if 'current_latency_ms' not in globals() or current_latency_ms == 0:
                  current_latency_ms = rtt_ms
