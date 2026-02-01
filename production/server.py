@@ -1146,15 +1146,38 @@ def update_scalping_data():
             fetch_start_time = time.time() # Measure RTT
             
             # CRITICAL FIX: Cast keys to string to match on_data storage format
-            fut_ltp = ticker_data.get(str(future_token), {}).get('price') if future_token else None
-            ce_ltp = ticker_data.get(str(atm_ce_token), {}).get('price') if atm_ce_token else None
-            pe_ltp = ticker_data.get(str(atm_pe_token), {}).get('price') if atm_pe_token else None
+            # FIX: Check Cache Freshness (prevent infinite loop of old data)
+            current_time = time.time()
             
-            # Identify which tokens need fetching (not in WS cache)
+            def get_fresh_price(token_id):
+                 if not token_id: return None
+                 entry = ticker_data.get(str(token_id), {})
+                 price = entry.get('price')
+                 ts = entry.get('timestamp', 0)
+                 # If data is older than 2 seconds, consider it STALE and force re-poll
+                 if price and (current_time - ts) < 2.0:
+                     return price
+                 return None
+
+            fut_ltp = get_fresh_price(future_token)
+            ce_ltp = get_fresh_price(atm_ce_token)
+            pe_ltp = get_fresh_price(atm_pe_token)
+            
+            # FIX: Also check Indices (Nifty 50 & India VIX) for staleness
+            nifty_token = "99926000"
+            vix_token = "99926017"
+            nifty_ltp = get_fresh_price(nifty_token)
+            vix_ltp = get_fresh_price(vix_token)
+            
+            # Identify which tokens need fetching (not in WS cache or Stale)
             to_fetch = []
             if not fut_ltp and future_token: to_fetch.append(('fut', future_symbol, str(future_token)))
             if not ce_ltp and atm_ce_token: to_fetch.append(('ce', ce_symbol, str(atm_ce_token)))
             if not pe_ltp and atm_pe_token: to_fetch.append(('pe', pe_symbol, str(atm_pe_token)))
+            
+            # Add Indices to fetch list if stale
+            if not nifty_ltp: to_fetch.append(('nifty', 'Nifty 50', str(nifty_token)))
+            if not vix_ltp: to_fetch.append(('indiavix', 'India VIX', str(vix_token)))
 
             if to_fetch:
                 # Phase 59: Rate Limit Backoff Logic
@@ -1185,7 +1208,21 @@ def update_scalping_data():
                             val = float(ltp_res)
                             
                             # CRITICAL: POPULATE CACHE TO PREVENT RE-POLLING
-                            ticker_data[token_res] = { "price": val }
+                            # Store with timestamp to allow expiration after 2s
+                            ticker_data[token_res] = {
+                                "price": val,
+                                "timestamp": time.time()
+                            }
+                            
+                            # Update Mapped Keys (nifty, indiavix) if applicable
+                            if token_res in token_map:
+                                mapped_key = token_map[token_res]
+                                ticker_data[mapped_key] = {
+                                    "price": val,
+                                    "timestamp": time.time(),
+                                    "change": 0.0, # Approximate since polling doesn't give close
+                                    "p_change": 0.0
+                                }
 
                             if token_res == str(future_token):
                                 fut_ltp = val
@@ -1594,6 +1631,15 @@ def on_data(ws, message):
                         "price": price,
                         "change": 0.0
                     }
+                    
+                    # FIX: Update ticker_data["nifty"] so UI and Polling logic see it as fresh
+                    ticker_data["nifty"] = {
+                        "price": price,
+                        "timestamp": time.time(),
+                        "change": 0.0,
+                        "p_change": 0.0
+                    }
+                    
                     if len(tick_history) > 0:
                         tick_entry["change"] = price - tick_history[-1]["price"]
                         
@@ -1620,11 +1666,6 @@ def on_data(ws, message):
                     last_pe_price = price
                     # print(f"✅ DEBUG: Global PE updated: {price}")
                 
-                # Update Ticker Data Store
-                ticker_data[str_token] = {
-                    "price": price,
-                    # ...
-                }
                 # 3. Update Ticker Data Store
                 # Calculate change (approximate vs close or previous tick if no close)
                 # For real close, we rely on API "close_price" if available, else 0
@@ -1637,11 +1678,26 @@ def on_data(ws, message):
                     change = price - close_price
                     p_change = (change / close_price) * 100
                 
-                ticker_data[key] = {
+                # CRITICAL: Store as STRING key with TIMESTAMP for cache validation
+                ticker_data[str_token] = {
                     "price": price,
                     "change": change,
-                    "p_change": p_change
+                    "p_change": p_change,
+                    "timestamp": time.time() # Add timestamp for freshness check
                 }
+                
+                # FIX: Also update Mapped Key (e.g., "indiavix") if this token maps to one
+                if str_token in token_map:
+                    # Don't overwrite "nifty" here if it was handled specially above, 
+                    # but "nifty" block already handles it. This is for VIX and others.
+                    mapped_key = token_map[str_token]
+                    if mapped_key != "nifty": # Avoid double write for nifty (handled in block above)
+                        ticker_data[mapped_key] = {
+                            "price": price,
+                            "change": change,
+                            "p_change": p_change,
+                            "timestamp": time.time()
+                        }
 
     except Exception as e:
         # print(f"Processing Error: {e}")
@@ -1829,7 +1885,6 @@ async def websocket_endpoint(websocket: WebSocket):
                     scalping_info = {
                         "pcr": pcr_value,
                         "sentiment": sentiment,
-                         "trend": straddle_trend
                     }
 
                 # Construct payload using REAL-TIME ticker_data
