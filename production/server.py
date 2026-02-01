@@ -1854,19 +1854,47 @@ async def get_trade_logs(limit: int = 100, date: Optional[str] = None):
                 # Filter by specific date (whole day)
                 # CRITICAL FIX: Increase limit for full-day queries to capture morning session
                 # 200 logs (frontend default) only covers ~10 mins at high frequency
-                day_limit = max(limit, 5000) 
+                day_limit = max(limit, 20000) 
                 
                 start_ts = f"{date}T00:00:00"
                 end_ts = f"{date}T23:59:59"
-                query = query.gte('timestamp', start_ts).lte('timestamp', end_ts).limit(day_limit)
-            else:
-                # Recent logs only
-                query = query.limit(limit)
+                
+                # Fetch all rows using pagination (Supabase often caps at 1000)
+                all_logs = []
+                offset = 0
+                batch_size = 1000
+                
+                while True:
+                    # Use range() for specific pagination
+                    # Note: Supabase range is inclusive [start, end]
+                    resp = trade_logger.supabase.table('trade_logs') \
+                        .select("*") \
+                        .order('timestamp', desc=True) \
+                        .gte('timestamp', start_ts) \
+                        .lte('timestamp', end_ts) \
+                        .range(offset, offset + batch_size - 1) \
+                        .execute()
+                    
+                    data = resp.data
+                    if not data:
+                        break
+                        
+                    all_logs.extend(data)
+                    
+                    if len(data) < batch_size or len(all_logs) >= day_limit:
+                        break
+                        
+                    offset += batch_size
+                    
+                return all_logs # Return raw list
             
-            return query.execute()
+            else:
+                # Recent logs only (Standard Limit)
+                query = query.limit(limit)
+                return query.execute().data # Return raw list
 
-        response = await asyncio.to_thread(fetch_query)
-        return response.data
+        response_data = await asyncio.to_thread(fetch_query)
+        return response_data
     except Exception as e:
         print(f"❌ Error fetching logs: {e}")
         return {"error": str(e)}

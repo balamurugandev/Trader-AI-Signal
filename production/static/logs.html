@@ -187,7 +187,7 @@
             tbody.innerHTML = ''; // Clear existing
 
             try {
-                let url = '/api/logs?limit=200'; // Increased limit for daily view
+                let url = '/api/logs?limit=10000'; // Increased limit for daily view
                 if (dateVal) {
                     url += `&date=${dateVal}`;
                 }
